@@ -8,7 +8,7 @@ app.use(cors());
 let cachedMatches = [];
 let lastUpdate = null;
 
-const API_KEY = "ceadda62777b4d6431a82acfedae7b82";
+const API_KEY = process.env.API_FOOTBALL_KEY;
 
 app.get("/matches", async (req, res) => {
 
