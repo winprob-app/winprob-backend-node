@@ -27,24 +27,62 @@ app.get("/matches", async (req, res) => {
       return res.json(cachedMatches);
     }
 
-    console.log("🌍 CONSULTANDO API");
+    console.log("🌍 CONSULTANDO THESPORTSDB");
 
-    const response = await axios.get(
-      "https://v3.football.api-sports.io/fixtures",
-      {
-        headers: {
-          "x-apisports-key": API_KEY
-        },
-        params: {
-          date: new Date().toISOString().split("T")[0]
-        }
-      }
-    );
+const today = new Date()
+  .toISOString()
+  .split("T")[0];
 
-    cachedMatches = response.data.response;
-    lastUpdate = now;
+const response = await axios.get(
+  `https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${today}&s=Soccer`
+);
 
-    res.json(cachedMatches);
+const events = response.data.events || [];
+
+cachedMatches = events.map(event => ({
+
+  fixture: {
+    id: event.idEvent,
+    date: event.strTimestamp,
+    status: {
+      short: event.strStatus
+    }
+  },
+
+  league: {
+    id: event.idLeague,
+    name: event.strLeague,
+    logo: event.strLeagueBadge
+  },
+
+  teams: {
+    home: {
+      id: event.idHomeTeam,
+      name: event.strHomeTeam,
+      logo: event.strHomeTeamBadge
+    },
+    away: {
+      id: event.idAwayTeam,
+      name: event.strAwayTeam,
+      logo: event.strAwayTeamBadge
+    }
+  },
+
+  goals: {
+  home: event.intHomeScore == null
+      ? null
+      : parseInt(event.intHomeScore),
+
+  away: event.intAwayScore == null
+      ? null
+      : parseInt(event.intAwayScore)
+}
+
+}));
+
+lastUpdate = now;
+
+res.json(cachedMatches);
 
   } catch (error) {
 
