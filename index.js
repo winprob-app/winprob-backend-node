@@ -288,6 +288,40 @@ app.get("/team-fixtures/:team", async (req, res) => {
   }
 });
 
+app.get("/logo", async (req, res) => {
+  try {
+
+    const imageUrl = req.query.url;
+
+    if (!imageUrl) {
+      return res.status(400).send("URL requerida");
+    }
+
+    const response = await axios.get(
+      imageUrl,
+      {
+        responseType: "arraybuffer"
+      }
+    );
+
+    res.set(
+      "Content-Type",
+      response.headers["content-type"]
+    );
+
+    res.send(response.data);
+
+  } catch (error) {
+
+    console.log(
+      "ERROR LOGO:",
+      error.message
+    );
+
+    res.status(500).send("Error cargando imagen");
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
