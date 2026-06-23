@@ -29,15 +29,26 @@ app.get("/matches", async (req, res) => {
 
     console.log("🌍 CONSULTANDO THESPORTSDB");
 
-const today = new Date()
-  .toISOString()
-  .split("T")[0];
+const events = [];
 
-const response = await axios.get(
-  `https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${today}&s=Soccer`
-);
+for (let i = 0; i < 3; i++) {
 
-const events = response.data.events || [];
+  const date = new Date();
+
+  date.setDate(date.getDate() + i);
+
+  const day = date
+    .toISOString()
+    .split("T")[0];
+
+  const response = await axios.get(
+    `https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${day}&s=Soccer`
+  );
+
+  if (response.data.events) {
+    events.push(...response.data.events);
+  }
+}
 
 cachedMatches = events.map(event => ({
 
