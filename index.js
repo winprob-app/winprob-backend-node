@@ -29,52 +29,15 @@ app.get("/matches", async (req, res) => {
 
     console.log("🌍 CONSULTANDO THESPORTSDB");
 
-const events = [];
-
-// HOY
 const today = new Date()
   .toISOString()
   .split("T")[0];
 
-const todayResponse = await axios.get(
+const response = await axios.get(
   `https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${today}&s=Soccer`
 );
 
-if (todayResponse.data.events) {
-  events.push(...todayResponse.data.events);
-}
-
-// MAÑANA
-const tomorrow = new Date();
-tomorrow.setDate(tomorrow.getDate() + 1);
-
-const tomorrowDate = tomorrow
-  .toISOString()
-  .split("T")[0];
-
-const tomorrowResponse = await axios.get(
-  `https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${tomorrowDate}&s=Soccer`
-);
-
-if (tomorrowResponse.data.events) {
-  events.push(...tomorrowResponse.data.events);
-}
-
-// PASADO MAÑANA
-const dayAfter = new Date();
-dayAfter.setDate(dayAfter.getDate() + 2);
-
-const dayAfterDate = dayAfter
-  .toISOString()
-  .split("T")[0];
-
-const dayAfterResponse = await axios.get(
-  `https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${dayAfterDate}&s=Soccer`
-);
-
-if (dayAfterResponse.data.events) {
-  events.push(...dayAfterResponse.data.events);
-}
+const events = response.data.events || [];
 
 events.sort((a, b) =>
   new Date(a.strTimestamp) -
