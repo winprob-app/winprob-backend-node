@@ -179,8 +179,25 @@ app.get("/matches-v2", async (req, res) => {
     id: match.id,
     date: match.utcDate,
     status: {
-      short: match.status
-    }
+  short:
+
+    match.status === "TIMED"
+      ? "NS"
+
+    : match.status === "SCHEDULED"
+      ? "NS"
+
+    : match.status === "IN_PLAY"
+      ? "1H"
+
+    : match.status === "PAUSED"
+      ? "HT"
+
+    : match.status === "FINISHED"
+      ? "FT"
+
+    : match.status
+}
   },
 
   league: {
