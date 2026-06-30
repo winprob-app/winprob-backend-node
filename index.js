@@ -8,7 +8,8 @@ app.use(cors());
 let cachedMatches = [];
 let lastUpdate = null;
 
-const API_KEY = process.env.API_FOOTBALL_KEY;
+const FOOTBALL_DATA_KEY =
+  process.env.FOOTBALL_DATA_KEY;
 
 app.get("/matches", async (req, res) => {
 
@@ -328,6 +329,52 @@ app.get("/logo", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+
+app.get("/test-football-data", async (req, res) => {
+
+  if (!FOOTBALL_DATA_KEY) {
+
+    return res.status(500).json({
+      error: "No existe FOOTBALL_DATA_KEY"
+    });
+
+  }
+
+  res.json({
+    ok: true,
+    message: "Football-Data configurada correctamente"
+  });
+
+});
+
+app.get("/matches-v2", async (req, res) => {
+
+  try {
+
+    const response = await axios.get(
+      "https://api.football-data.org/v4/matches",
+      {
+        headers: {
+          "X-Auth-Token": FOOTBALL_DATA_KEY
+        }
+      }
+    );
+
+    res.json(response.data);
+
+  } catch (error) {
+
+    console.log(
+      error.response?.data || error.message
+    );
+
+    res.status(500).json({
+      error: "Error Football-Data"
+    });
+
+  }
+
+});
 
 app.listen(PORT, () => {
   console.log("Servidor corriendo en puerto " + PORT);
