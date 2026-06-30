@@ -107,193 +107,6 @@ res.json(cachedMatches);
   }
 });
 
-app.get("/team/:id", async (req, res) => {
-  try {
-
-    const teamId = req.params.id;
-
-    const response = await axios.get(
-      "https://v3.football.api-sports.io/teams",
-      {
-        headers: {
-          "x-apisports-key": API_KEY
-        },
-        params: {
-          id: teamId
-        }
-      }
-    );
-
-    res.json(response.data.response);
-
-  } catch (error) {
-
-    console.log(error.message);
-
-    res.status(500).json({
-      error: "Error obteniendo equipo"
-    });
-
-  }
-});
-
-app.get("/team-form/:id", async (req, res) => {
-
-  try {
-
-    const teamId = req.params.id;
-
-    const response = await axios.get(
-      "https://v3.football.api-sports.io/fixtures",
-      {
-        headers: {
-          "x-apisports-key": API_KEY
-        },
-        params: {
-          team: teamId,
-          last: 5
-        }
-      }
-    );
-
-    res.json(response.data.response);
-
-  } catch (error) {
-
-    console.log("ERROR TEAM FORM:", error.message);
-
-    res.status(500).json({
-      error: "Error obteniendo forma del equipo"
-    });
-
-  }
-
-});
-
-app.get("/team-stats/:league/:team", async (req, res) => {
-  try {
-
-    const league = req.params.league;
-    const team = req.params.team;
-
-    console.log("LEAGUE:", league);
-    console.log("TEAM:", team);
-
-    const response = await axios.get(
-      "https://v3.football.api-sports.io/teams/statistics",
-      {
-        headers: {
-          "x-apisports-key": API_KEY
-        },
-        params: {
-          league: league,
-          season: 2024,
-          team: team
-        }
-      }
-    );
-
-console.log(
-  JSON.stringify(
-    response.data,
-    null,
-    2
-  )
-);
-
-    res.json(response.data.response);
-
-  } catch (error) {
-
-    console.log("ERROR:", error.response?.data);
-    console.log("MESSAGE:", error.message);
-
-    res.status(500).json({
-      error: "Error obteniendo estadísticas"
-    });
-
-  }
-});
-
-app.get("/team-last-matches/:id", async (req, res) => {
-  try {
-
-    const teamId = req.params.id;
-
-    const response = await axios.get(
-      "https://v3.football.api-sports.io/fixtures",
-      {
-        headers: {
-          "x-apisports-key": API_KEY
-        },
-        params: {
-          team: teamId,
-          last: 5
-        }
-      }
-    );
-
-// console.log(
-//   JSON.stringify(
-//     response.data,
-//     null,
-//     2
-//   )
-// );
-
-    res.json(response.data.response);
-
-  } catch (error) {
-
-    console.log("ERROR:", error.response?.data);
-    console.log("MESSAGE:", error.message);
-
-    res.status(500).json({
-      error: "Error obteniendo últimos partidos"
-    });
-
-  }
-});
-
-app.get("/team-fixtures/:team", async (req, res) => {
-  try {
-
-    const team = req.params.team;
-
-    const response = await axios.get(
-      "https://v3.football.api-sports.io/fixtures",
-      {
-        headers: {
-          "x-apisports-key": API_KEY
-        },
-        params: {
-          team: team,
-          season: 2024
-        }
-      }
-    );
-
-    // console.log(
-//   JSON.stringify(
-//     response.data,
-//     null,
-//     2
-//   )
-// );
-
-    res.json(response.data.response);
-
-  } catch (error) {
-
-    console.log(error.response?.data);
-
-    res.status(500).json({
-      error: "Error obteniendo fixtures"
-    });
-
-  }
-});
-
 app.get("/logo", async (req, res) => {
   try {
 
@@ -360,7 +173,49 @@ app.get("/matches-v2", async (req, res) => {
       }
     );
 
-    res.json(response.data);
+    const matches = response.data.matches.map(match => ({
+
+  fixture: {
+    id: match.id,
+    date: match.utcDate,
+    status: {
+      short: match.status
+    }
+  },
+
+  league: {
+    id: match.competition.id,
+    name: match.competition.name,
+    logo: match.competition.emblem
+  },
+
+  teams: {
+
+    home: {
+      id: match.homeTeam.id,
+      name: match.homeTeam.name,
+      logo: match.homeTeam.crest
+    },
+
+    away: {
+      id: match.awayTeam.id,
+      name: match.awayTeam.name,
+      logo: match.awayTeam.crest
+    }
+
+  },
+
+  goals: {
+
+    home: match.score.fullTime.home,
+
+    away: match.score.fullTime.away
+
+  }
+
+}));
+
+res.json(matches);
 
   } catch (error) {
 
