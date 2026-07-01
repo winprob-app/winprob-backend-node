@@ -191,14 +191,22 @@ app.get("/matches-v2", async (req, res) => {
 
   try {
 
-    const response = await axios.get(
-      "https://api.football-data.org/v4/matches",
-      {
-        headers: {
-          "X-Auth-Token": FOOTBALL_DATA_KEY
-        }
-      }
-    );
+    const today = new Date();
+const from = today.toISOString().split("T")[0];
+
+const future = new Date();
+future.setDate(today.getDate() + 7);
+
+const to = future.toISOString().split("T")[0];
+
+const response = await axios.get(
+  `https://api.football-data.org/v4/matches?dateFrom=${from}&dateTo=${to}`,
+  {
+    headers: {
+      "X-Auth-Token": FOOTBALL_DATA_KEY
+    }
+  }
+);
 
     const matches = response.data.matches.map(match => ({
 
