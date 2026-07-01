@@ -208,7 +208,21 @@ const response = await axios.get(
   }
 );
 
-    const matches = response.data.matches.map(match => ({
+const allowedCompetitions = [
+  "WC",
+  "PL",
+  "PD",
+  "SA",
+  "BL1",
+  "FL1",
+  "CL"
+];
+
+const filteredMatches = response.data.matches.filter(match =>
+  allowedCompetitions.includes(match.competition.code)
+);
+
+    const matches = filteredMatches.map(match => ({
 
   fixture: {
     id: match.id,
