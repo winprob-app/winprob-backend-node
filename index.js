@@ -107,7 +107,10 @@ res.json(cachedMatches);
   }
 });
 
+const sharp = require("sharp");
+
 app.get("/logo", async (req, res) => {
+
   try {
 
     const imageUrl = req.query.url;
@@ -123,22 +126,46 @@ app.get("/logo", async (req, res) => {
       }
     );
 
-    res.set(
-      "Content-Type",
-      response.headers["content-type"]
-    );
+    const contentType =
+      response.headers["content-type"] || "";
+
+    // Si ya es PNG simplemente lo enviamos
+    if (contentType.includes("png")) {
+
+      res.set("Content-Type", "image/png");
+
+      return res.send(response.data);
+
+    }
+
+    // Si es SVG lo convertimos automáticamente
+
+    if (contentType.includes("svg")) {
+
+      const png = await sharp(response.data)
+        .png()
+        .toBuffer();
+
+      res.set("Content-Type", "image/png");
+
+      return res.send(png);
+
+    }
+
+    // Cualquier otro formato
+
+    res.set("Content-Type", contentType);
 
     res.send(response.data);
 
   } catch (error) {
 
-    console.log(
-      "ERROR LOGO:",
-      error.message
-    );
+    console.log("ERROR LOGO:", error.message);
 
     res.status(500).send("Error cargando imagen");
+
   }
+
 });
 
 const PORT = process.env.PORT || 3000;
