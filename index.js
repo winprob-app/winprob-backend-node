@@ -296,6 +296,82 @@ res.json(matches);
   }
 
 });
+app.get("/team-stats/:teamId", async (req, res) => {
+
+  try {
+
+    const teamId = req.params.teamId;
+
+    const response = await axios.get(
+      `https://api.football-data.org/v4/teams/${teamId}/matches?limit=5`,
+      {
+        headers: {
+          "X-Auth-Token": FOOTBALL_DATA_KEY
+        }
+      }
+    );
+
+    const matches = response.data.matches;
+
+    let wins = 0;
+    let draws = 0;
+    let losses = 0;
+
+    let goalsFor = 0;
+    let goalsAgainst = 0;
+
+    matches.forEach(match => {
+
+      const isHome =
+        match.homeTeam.id == teamId;
+
+      const gf = isHome
+        ? match.score.fullTime.home
+        : match.score.fullTime.away;
+
+      const ga = isHome
+        ? match.score.fullTime.away
+        : match.score.fullTime.home;
+
+      goalsFor += gf ?? 0;
+      goalsAgainst += ga ?? 0;
+
+      if (gf > ga) wins++;
+      else if (gf == ga) draws++;
+      else losses++;
+
+    });
+
+    res.json({
+
+      wins,
+      draws,
+      losses,
+
+      goalsForAverage:
+        Number(
+          goalsFor / matches.length
+        ).toFixed(2),
+
+      goalsAgainstAverage:
+        Number(
+          goalsAgainst / matches.length
+        ).toFixed(2)
+
+    });
+
+  } catch (error) {
+
+    console.log(error.response?.data || error.message);
+
+    res.status(500).json({
+      error: "Error obteniendo estadísticas"
+    });
+
+  }
+
+});
+
 
 app.listen(PORT, () => {
   console.log("Servidor corriendo en puerto " + PORT);
