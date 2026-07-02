@@ -363,13 +363,19 @@ app.get("/team-stats/:teamId", async (req, res) => {
 
   } catch (error) {
 
-    console.log(error.response?.data || error.message);
+  console.log("ERROR TEAM STATS");
 
-    res.status(500).json({
-      error: "Error obteniendo estadísticas"
-    });
+  console.log(error.response?.status);
 
-  }
+  console.log(error.response?.data);
+
+  console.log(error.message);
+
+  res.status(500).json({
+    error: error.response?.data || error.message
+  });
+
+}
 
 });
 
