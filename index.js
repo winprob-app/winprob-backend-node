@@ -313,6 +313,8 @@ app.get("/team-stats/:teamId", async (req, res) => {
 
     const matches = response.data.matches;
 
+    console.log(JSON.stringify(matches, null, 2));
+
     let wins = 0;
     let draws = 0;
     let losses = 0;
