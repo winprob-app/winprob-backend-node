@@ -303,14 +303,13 @@ app.get("/team-stats/:teamId", async (req, res) => {
     const teamId = req.params.teamId;
 
     const response = await axios.get(
-      `https://api.football-data.org/v4/teams/${teamId}/matches?limit=5`,
-      {
-        headers: {
-          "X-Auth-Token": FOOTBALL_DATA_KEY
-        }
-      }
-    );
-
+  `https://api.football-data.org/v4/teams/${teamId}/matches?status=FINISHED&limit=5`,
+  {
+    headers: {
+      "X-Auth-Token": FOOTBALL_DATA_KEY
+    }
+  }
+);
     const matches = response.data.matches;
 
     console.log(JSON.stringify(matches, null, 2));
