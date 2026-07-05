@@ -379,7 +379,7 @@ app.get("/team-stats/:teamId", async (req, res) => {
 
 });
 
-app.get("/headtohead/:homeId/:awayId", async (req, res) => {
+app.get("/head-to-head/:homeId/:awayId", async (req, res) => {
 
   try {
 
