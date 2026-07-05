@@ -379,6 +379,87 @@ app.get("/team-stats/:teamId", async (req, res) => {
 
 });
 
+app.get("/headtohead/:homeId/:awayId", async (req, res) => {
+
+  try {
+
+    const homeId = req.params.homeId;
+    const awayId = req.params.awayId;
+
+    const response = await axios.get(
+      `https://api.football-data.org/v4/teams/${homeId}/matches?status=FINISHED`,
+      {
+        headers: {
+          "X-Auth-Token": FOOTBALL_DATA_KEY
+        }
+      }
+    );
+
+    const matches = response.data.matches
+      .filter(match =>
+
+        (match.homeTeam.id == homeId &&
+         match.awayTeam.id == awayId)
+
+        ||
+
+        (match.homeTeam.id == awayId &&
+         match.awayTeam.id == homeId)
+
+      )
+      .slice(0, 5);
+
+    let homeWins = 0;
+    let awayWins = 0;
+    let draws = 0;
+
+    matches.forEach(match => {
+
+      const hg = match.score.fullTime.home;
+      const ag = match.score.fullTime.away;
+
+      if (hg == ag) {
+
+        draws++;
+
+      } else {
+
+        if (match.homeTeam.id == homeId) {
+
+          if (hg > ag) homeWins++;
+          else awayWins++;
+
+        } else {
+
+          if (ag > hg) homeWins++;
+          else awayWins++;
+
+        }
+
+      }
+
+    });
+
+    res.json({
+
+      homeWins,
+      awayWins,
+      draws,
+      matches: matches.length
+
+    });
+
+  } catch (error) {
+
+    console.log(error.response?.data || error.message);
+
+    res.status(500).json({
+      error: "Error Head To Head"
+    });
+
+  }
+
+});
 
 app.listen(PORT, () => {
   console.log("Servidor corriendo en puerto " + PORT);
