@@ -474,6 +474,35 @@ app.get("/head-to-head/:homeId/:awayId", async (req, res) => {
 
 });
 
+app.get("/team-form/:teamId", async (req, res) => {
+
+  try {
+
+    const teamId = req.params.teamId;
+
+    const response = await axios.get(
+      `https://api.football-data.org/v4/teams/${teamId}/matches?status=FINISHED&limit=5`,
+      {
+        headers: {
+          "X-Auth-Token": FOOTBALL_DATA_KEY
+        }
+      }
+    );
+
+    res.json(response.data.matches);
+
+  } catch (error) {
+
+    console.log(error.response?.data || error.message);
+
+    res.status(500).json({
+      error: "Error obteniendo forma"
+    });
+
+  }
+
+});
+
 app.listen(PORT, () => {
   console.log("Servidor corriendo en puerto " + PORT);
 });
