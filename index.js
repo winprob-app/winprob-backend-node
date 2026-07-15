@@ -222,7 +222,20 @@ const filteredMatches = response.data.matches.filter(match =>
   allowedCompetitions.includes(match.competition.code)
 );
 
-    const matches = filteredMatches.map(match => ({
+const validMatches = filteredMatches.filter(match =>
+
+  match.homeTeam &&
+  match.awayTeam &&
+
+  match.homeTeam.id &&
+  match.awayTeam.id &&
+
+  match.homeTeam.name &&
+  match.awayTeam.name
+
+);
+
+    const matches = validMatches.map(match => ({
 
   fixture: {
     id: match.id,
