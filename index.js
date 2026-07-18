@@ -2,6 +2,9 @@ const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
 
+const fs = require("fs-extra");
+const path = require("path");
+
 const app = express();
 app.use(cors());
 
@@ -10,6 +13,14 @@ let lastUpdate = null;
 
 const FOOTBALL_DATA_KEY =
   process.env.FOOTBALL_DATA_KEY;
+
+  const LOGOS_FOLDER = path.join(
+  __dirname,
+  "logos",
+  "teams"
+);
+
+fs.ensureDirSync(LOGOS_FOLDER);
 
 app.get("/matches", async (req, res) => {
 
@@ -109,15 +120,59 @@ res.json(cachedMatches);
 
 const sharp = require("sharp");
 
+const teamLogoMap = {
+  770: "england",
+  762: "argentina",
+  760: "spain",
+  773: "france",
+  769: "brazil",
+  758: "germany",
+  760: "spain",
+  765: "netherlands",
+  764: "belgium",
+  563: "real-madrid",
+  81: "barcelona",
+  64: "liverpool",
+  65: "manchester-city",
+  66: "manchester-united"
+};
+
 app.get("/logo", async (req, res) => {
+
+  console.log("======== NUEVO LOGO ========");
+
+console.log("TEAM ID:", req.query.teamId);
+
+console.log("URL:", req.query.url);
 
   try {
 
-    const imageUrl = req.query.url;
+    const teamId = req.query.teamId;
+let imageUrl = req.query.url;
+
+if (teamId && teamLogoMap[teamId]) {
+  imageUrl = `https://football-logos.cc/logos/${teamLogoMap[teamId]}.png`;
+}
 
     if (!imageUrl) {
       return res.status(400).send("URL requerida");
     }
+
+    const fileName = path.basename(imageUrl).replace(".svg", ".png");
+
+const localPath = path.join(
+  LOGOS_FOLDER,
+  fileName,
+);
+
+// ¿Ya existe el escudo?
+if (await fs.pathExists(localPath)) {
+
+  console.log("📦 Logo desde caché:", fileName);
+
+  return res.sendFile(localPath);
+
+}
 
     const response = await axios.get(
       imageUrl,
@@ -132,25 +187,29 @@ app.get("/logo", async (req, res) => {
     // Si ya es PNG simplemente lo enviamos
     if (contentType.includes("png")) {
 
-      res.set("Content-Type", "image/png");
+  await fs.writeFile(localPath, response.data);
 
-      return res.send(response.data);
+  console.log("💾 Logo guardado:", fileName);
 
-    }
+  return res.sendFile(localPath);
+
+}
 
     // Si es SVG lo convertimos automáticamente
 
     if (contentType.includes("svg")) {
 
-      const png = await sharp(response.data)
-        .png()
-        .toBuffer();
+  const png = await sharp(response.data)
+    .png()
+    .toBuffer();
 
-      res.set("Content-Type", "image/png");
+  await fs.writeFile(localPath, png);
 
-      return res.send(png);
+  console.log("💾 Logo convertido:", fileName);
 
-    }
+  return res.sendFile(localPath);
+
+}
 
     // Cualquier otro formato
 
@@ -192,11 +251,16 @@ app.get("/matches-v2", async (req, res) => {
   try {
 
     const today = new Date();
-const from = today.toISOString().split("T")[0];
 
-const future = new Date();
-future.setDate(today.getDate() + 7);
+// ← últimos 3 días
+const past = new Date(today);
+past.setDate(today.getDate() - 3);
 
+// → próximos 10 días
+const future = new Date(today);
+future.setDate(today.getDate() + 10);
+
+const from = past.toISOString().split("T")[0];
 const to = future.toISOString().split("T")[0];
 
 const response = await axios.get(
@@ -209,14 +273,36 @@ const response = await axios.get(
 );
 
 const allowedCompetitions = [
-  "WC",
-  "PL",
-  "PD",
-  "SA",
-  "BL1",
-  "FL1",
-  "CL"
+
+  "WC",      // Mundial
+  "CL",      // Champions
+  "PL",      // Premier League
+  "PD",      // La Liga
+  "SA",      // Serie A
+  "BL1",     // Bundesliga
+  "FL1",     // Ligue 1
+
+  "EL",      // Europa League
+  "ECL",     // Conference League
+
+  "BSA",     // Brasileirão
+  "DED",     // Eredivisie
+  "PPL",     // Primeira Liga
+
 ];
+
+console.log(
+  "PARTIDOS TOTALES DEVUELTOS:",
+  response.data.matches.length
+);
+
+console.log(
+  response.data.matches.map(m => ({
+    competition: m.competition.code,
+    home: m.homeTeam.name,
+    away: m.awayTeam.name
+  }))
+);
 
 const filteredMatches = response.data.matches.filter(match =>
   allowedCompetitions.includes(match.competition.code)
