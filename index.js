@@ -250,8 +250,6 @@ app.get("/matches-v2", async (req, res) => {
 
   try {
 
-    const today = new Date();
-
 const today = new Date();
 
 const from = today.toISOString().split("T")[0];
@@ -259,8 +257,6 @@ const from = today.toISOString().split("T")[0];
 const future = new Date(today);
 future.setDate(today.getDate() + 9);
 
-const to = future.toISOString().split("T")[0];
-const from = past.toISOString().split("T")[0];
 const to = future.toISOString().split("T")[0];
 
 const response = await axios.get(
