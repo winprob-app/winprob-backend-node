@@ -252,14 +252,14 @@ app.get("/matches-v2", async (req, res) => {
 
     const today = new Date();
 
-// ← últimos 3 días
-const past = new Date(today);
-past.setDate(today.getDate() - 3);
+const today = new Date();
 
-// → próximos 10 días
+const from = today.toISOString().split("T")[0];
+
 const future = new Date(today);
-future.setDate(today.getDate() + 10);
+future.setDate(today.getDate() + 9);
 
+const to = future.toISOString().split("T")[0];
 const from = past.toISOString().split("T")[0];
 const to = future.toISOString().split("T")[0];
 
