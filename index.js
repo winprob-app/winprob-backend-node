@@ -531,13 +531,12 @@ app.get("/matches-v2", async (req, res) => {
 
 });
 
-console.log("TOTAL ENVIADOS:", matches.length);
-
 matchesCache = matches;
 
 lastMatchesUpdate = Date.now();
 
-console.log("🌍 Partidos actualizados desde Football-Data");
+console.log("🌍 Football-Data actualizado");
+console.log("📦 Partidos guardados:", matches.length);
 
 res.json(matchesCache);
 
