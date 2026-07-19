@@ -353,16 +353,22 @@ const validMatches = filteredMatches.filter(match =>
   teams: {
 
     home: {
-      id: match.homeTeam.id,
-      name: match.homeTeam.name,
-      logo: match.homeTeam.crest
-    },
+  id: match.homeTeam.id,
+  name: match.homeTeam.name,
+  logo:
+    match.competition.code === "WC"
+      ? `https://images.football-logos.com/${match.homeTeam.id}.png`
+      : match.homeTeam.crest
+},
 
-    away: {
-      id: match.awayTeam.id,
-      name: match.awayTeam.name,
-      logo: match.awayTeam.crest
-    }
+away: {
+  id: match.awayTeam.id,
+  name: match.awayTeam.name,
+  logo:
+    match.competition.code === "WC"
+      ? `https://images.football-logos.com/${match.awayTeam.id}.png`
+      : match.awayTeam.crest
+}
 
   },
 
