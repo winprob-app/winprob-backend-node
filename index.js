@@ -229,6 +229,12 @@ if (await fs.pathExists(localPath)) {
 
 const PORT = process.env.PORT || 3000;
 
+let matchesCache = [];
+
+let lastMatchesUpdate = 0;
+
+const MATCH_CACHE_TIME = 5 * 60 * 1000;
+
 app.get("/test-football-data", async (req, res) => {
 
   if (!FOOTBALL_DATA_KEY) {
@@ -284,174 +290,257 @@ app.get("/matches-v2", async (req, res) => {
 
   try {
 
-const today = new Date();
+    const now = Date.now();
 
-const from = today.toISOString().split("T")[0];
+    // ==========================
+    // CACHE (5 minutos)
+    // ==========================
 
-const future = new Date(today);
-future.setDate(today.getDate() + 9);
+    if (
+      matchesCache.length > 0 &&
+      (now - lastMatchesUpdate) < MATCH_CACHE_TIME
+    ) {
 
-const to = future.toISOString().split("T")[0];
+      console.log("📦 Partidos desde CACHE");
 
-const [scheduledResponse, liveResponse] = await Promise.all([
+      return res.json(matchesCache);
 
-  axios.get(
-    `https://api.football-data.org/v4/matches?dateFrom=${from}&dateTo=${to}`,
-    {
-      headers: {
-        "X-Auth-Token": FOOTBALL_DATA_KEY
-      }
     }
-  ),
 
-  axios.get(
-    "https://api.football-data.org/v4/matches",
-    {
-      headers: {
-        "X-Auth-Token": FOOTBALL_DATA_KEY
-      }
-    }
-  )
+    // ==========================
+    // FECHAS
+    // ==========================
 
-]);
+    const today = new Date();
 
-const allMatches = [
+    const from = today.toISOString().split("T")[0];
 
-  ...scheduledResponse.data.matches,
+    const future = new Date(today);
+    future.setDate(today.getDate() + 9);
 
-  ...liveResponse.data.matches
+    const to = future.toISOString().split("T")[0];
 
-];
+    // ==========================
+    // CONSULTAS
+    // ==========================
 
-const uniqueMatches = [
-  ...new Map(
-    allMatches.map(match => [match.id, match])
-  ).values()
-];
+    const [scheduledResponse, liveResponse] = await Promise.all([
 
-const allowedCompetitions = [
+      axios.get(
+        `https://api.football-data.org/v4/matches?dateFrom=${from}&dateTo=${to}`,
+        {
+          headers: {
+            "X-Auth-Token": FOOTBALL_DATA_KEY
+          }
+        }
+      ),
 
-  "WC",      // Mundial
-  "CL",      // Champions
-  "PL",      // Premier League
-  "PD",      // La Liga
-  "SA",      // Serie A
-  "BL1",     // Bundesliga
-  "FL1",     // Ligue 1
+      axios.get(
+        "https://api.football-data.org/v4/matches",
+        {
+          headers: {
+            "X-Auth-Token": FOOTBALL_DATA_KEY
+          }
+        }
+      )
 
-  "EL",      // Europa League
-  "ECL",     // Conference League
+    ]);
 
-  "BSA",     // Brasileirão
-  "DED",     // Eredivisie
-  "PPL",     // Primeira Liga
+    // ==========================
+    // UNIR PARTIDOS
+    // ==========================
 
-];
+    const allMatches = [
 
-console.log(
-  "PARTIDOS TOTALES:",
-  allMatches.length
-);
+      ...scheduledResponse.data.matches,
 
-const filteredMatches = uniqueMatches.filter(match =>
-  allowedCompetitions.includes(match.competition.code)
-);
+      ...liveResponse.data.matches
 
-const validMatches = filteredMatches.filter(match =>
+    ];
 
-  match.homeTeam &&
-  match.awayTeam &&
+    // ==========================
+    // ELIMINAR DUPLICADOS
+    // ==========================
 
-  match.homeTeam.id &&
-  match.awayTeam.id &&
+    const uniqueMatches = [
 
-  match.homeTeam.name &&
-  match.awayTeam.name
+      ...new Map(
+        allMatches.map(match => [match.id, match])
+      ).values()
 
-);
+    ];
+
+    // ==========================
+    // LIGAS PERMITIDAS
+    // ==========================
+
+    const allowedCompetitions = [
+
+      "WC",
+      "CL",
+      "PL",
+      "PD",
+      "SA",
+      "BL1",
+      "FL1",
+      "EL",
+      "ECL",
+      "BSA",
+      "DED",
+      "PPL"
+
+    ];
+
+    const filteredMatches = uniqueMatches.filter(match =>
+
+      allowedCompetitions.includes(
+        match.competition.code
+      )
+
+    );
+
+    const validMatches = filteredMatches.filter(match =>
+
+      match.homeTeam &&
+      match.awayTeam &&
+      match.homeTeam.id &&
+      match.awayTeam.id &&
+      match.homeTeam.name &&
+      match.awayTeam.name
+
+    );
+
+    // ==========================
+    // MAPEO
+    // ==========================
 
     const matches = validMatches.map(match => ({
 
-  fixture: {
-    id: match.id,
-    date: match.utcDate,
-    status: {
-  short:
+      fixture: {
 
-    match.status === "TIMED"
-      ? "NS"
+        id: match.id,
 
-    : match.status === "SCHEDULED"
-      ? "NS"
+        date: match.utcDate,
 
-    : match.status === "IN_PLAY"
-      ? "1H"
+        status: {
 
-    : match.status === "PAUSED"
-      ? "HT"
+          short:
 
-    : match.status === "FINISHED"
-      ? "FT"
+            match.status === "TIMED"
+              ? "NS"
 
-    : match.status
-}
-  },
+            : match.status === "SCHEDULED"
+              ? "NS"
 
-  league: {
-    id: match.competition.id,
-    name: match.competition.name,
-    logo: match.competition.emblem
-  },
+            : match.status === "IN_PLAY"
+              ? "1H"
 
-  teams: {
+            : match.status === "PAUSED"
+              ? "HT"
 
-    home: {
-  id: match.homeTeam.id,
-  name: match.homeTeam.name,
-  logo:
-    match.competition.code === "WC"
-      ? `https://images.football-logos.com/${match.homeTeam.id}.png`
-      : match.homeTeam.crest
-},
+            : match.status === "FINISHED"
+              ? "FT"
 
-away: {
-  id: match.awayTeam.id,
-  name: match.awayTeam.name,
-  logo:
-    match.competition.code === "WC"
-      ? `https://images.football-logos.com/${match.awayTeam.id}.png`
-      : match.awayTeam.crest
-}
+            : match.status
 
-  },
+        }
 
-  goals: {
+      },
 
-    home: match.score.fullTime.home,
+      league: {
 
-    away: match.score.fullTime.away
+        id: match.competition.id,
 
-  }
+        name: match.competition.name,
 
-}));
+        logo: match.competition.emblem
 
-console.log("TOTAL ENVIADOS:", matches.length);
+      },
 
-res.json(matches);
+      teams: {
+
+        home: {
+
+          id: match.homeTeam.id,
+
+          name: match.homeTeam.name,
+
+          logo:
+
+            match.competition.code == "WC"
+
+              ? `https://images.football-logos.com/${match.homeTeam.id}.png`
+
+              : match.homeTeam.crest
+
+        },
+
+        away: {
+
+          id: match.awayTeam.id,
+
+          name: match.awayTeam.name,
+
+          logo:
+
+            match.competition.code == "WC"
+
+              ? `https://images.football-logos.com/${match.awayTeam.id}.png`
+
+              : match.awayTeam.crest
+
+        }
+
+      },
+
+      goals: {
+
+        home: match.score.fullTime.home,
+
+        away: match.score.fullTime.away
+
+      }
+
+    }));
+
+    // ==========================
+    // GUARDAR CACHE
+    // ==========================
+
+    matchesCache = matches;
+
+    lastMatchesUpdate = Date.now();
+
+    console.log("🌍 Football-Data actualizado");
+
+    console.log("📦 Partidos guardados:", matches.length);
+
+    res.json(matchesCache);
 
   } catch (error) {
 
-    console.log(
-      error.response?.data || error.message
-    );
+    console.log(error.response?.data || error.message);
 
     res.status(500).json({
+
       error: "Error Football-Data"
+
     });
 
   }
 
 });
+
+console.log("TOTAL ENVIADOS:", matches.length);
+
+matchesCache = matches;
+
+lastMatchesUpdate = Date.now();
+
+console.log("🌍 Partidos actualizados desde Football-Data");
+
+res.json(matchesCache);
+
 app.get("/team-stats/:teamId", async (req, res) => {
 
   try {
