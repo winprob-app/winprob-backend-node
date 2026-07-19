@@ -531,15 +531,6 @@ app.get("/matches-v2", async (req, res) => {
 
 });
 
-matchesCache = matches;
-
-lastMatchesUpdate = Date.now();
-
-console.log("🌍 Football-Data actualizado");
-console.log("📦 Partidos guardados:", matches.length);
-
-res.json(matchesCache);
-
 app.get("/team-stats/:teamId", async (req, res) => {
 
   try {
