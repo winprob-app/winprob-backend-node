@@ -246,6 +246,40 @@ app.get("/test-football-data", async (req, res) => {
 
 });
 
+app.get("/matches-live", async (req, res) => {
+
+  try {
+
+    const response = await axios.get(
+      "https://api.football-data.org/v4/matches",
+      {
+        headers: {
+          "X-Auth-Token": FOOTBALL_DATA_KEY
+        }
+      }
+    );
+
+    const liveMatches = response.data.matches.filter(match =>
+      [
+        "IN_PLAY",
+        "PAUSED"
+      ].includes(match.status)
+    );
+
+    res.json(liveMatches);
+
+  } catch (error) {
+
+    console.log(error.response?.data || error.message);
+
+    res.status(500).json({
+      error: "Error partidos en vivo"
+    });
+
+  }
+
+});
+
 app.get("/matches-v2", async (req, res) => {
 
   try {
@@ -259,14 +293,41 @@ future.setDate(today.getDate() + 9);
 
 const to = future.toISOString().split("T")[0];
 
-const response = await axios.get(
-  `https://api.football-data.org/v4/matches?dateFrom=${from}&dateTo=${to}`,
-  {
-    headers: {
-      "X-Auth-Token": FOOTBALL_DATA_KEY
+const [scheduledResponse, liveResponse] = await Promise.all([
+
+  axios.get(
+    `https://api.football-data.org/v4/matches?dateFrom=${from}&dateTo=${to}`,
+    {
+      headers: {
+        "X-Auth-Token": FOOTBALL_DATA_KEY
+      }
     }
-  }
-);
+  ),
+
+  axios.get(
+    "https://api.football-data.org/v4/matches",
+    {
+      headers: {
+        "X-Auth-Token": FOOTBALL_DATA_KEY
+      }
+    }
+  )
+
+]);
+
+const allMatches = [
+
+  ...scheduledResponse.data.matches,
+
+  ...liveResponse.data.matches
+
+];
+
+const uniqueMatches = [
+  ...new Map(
+    allMatches.map(match => [match.id, match])
+  ).values()
+];
 
 const allowedCompetitions = [
 
@@ -288,19 +349,11 @@ const allowedCompetitions = [
 ];
 
 console.log(
-  "PARTIDOS TOTALES DEVUELTOS:",
-  response.data.matches.length
+  "PARTIDOS TOTALES:",
+  allMatches.length
 );
 
-console.log(
-  response.data.matches.map(m => ({
-    competition: m.competition.code,
-    home: m.homeTeam.name,
-    away: m.awayTeam.name
-  }))
-);
-
-const filteredMatches = response.data.matches.filter(match =>
+const filteredMatches = uniqueMatches.filter(match =>
   allowedCompetitions.includes(match.competition.code)
 );
 
