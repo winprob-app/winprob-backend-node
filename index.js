@@ -435,6 +435,8 @@ away: {
 
 }));
 
+console.log("TOTAL ENVIADOS:", matches.length);
+
 res.json(matches);
 
   } catch (error) {
