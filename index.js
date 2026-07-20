@@ -235,6 +235,14 @@ let lastMatchesUpdate = 0;
 
 const MATCH_CACHE_TIME = 5 * 60 * 1000;
 
+// ==========================
+// CACHE TEAM STATS
+// ==========================
+
+const teamStatsCache = {};
+
+const TEAM_STATS_CACHE_TIME = 5 * 60 * 1000;
+
 app.get("/test-football-data", async (req, res) => {
 
   if (!FOOTBALL_DATA_KEY) {
@@ -537,6 +545,19 @@ app.get("/team-stats/:teamId", async (req, res) => {
 
     const teamId = req.params.teamId;
 
+    const now = Date.now();
+
+if (
+  teamStatsCache[teamId] &&
+  (now - teamStatsCache[teamId].updated) < TEAM_STATS_CACHE_TIME
+) {
+
+  console.log("📦 TeamStats desde CACHE:", teamId);
+
+  return res.json(teamStatsCache[teamId].data);
+
+}
+
     const response = await axios.get(
   `https://api.football-data.org/v4/teams/${teamId}/matches?status=FINISHED&limit=5`,
   {
@@ -578,23 +599,39 @@ app.get("/team-stats/:teamId", async (req, res) => {
 
     });
 
-    res.json({
+    const stats = {
 
-      wins,
-      draws,
-      losses,
+  wins,
+  draws,
+  losses,
 
-      goalsForAverage:
-        Number(
-          goalsFor / matches.length
-        ).toFixed(2),
+  goalsForAverage:
+    Number(
+      goalsFor / matches.length
+    ).toFixed(2),
 
-      goalsAgainstAverage:
-        Number(
-          goalsAgainst / matches.length
-        ).toFixed(2)
+  goalsAgainstAverage:
+    Number(
+      goalsAgainst / matches.length
+    ).toFixed(2)
 
-    });
+};
+
+// ==========================
+// GUARDAR CACHE
+// ==========================
+
+teamStatsCache[teamId] = {
+
+  updated: Date.now(),
+
+  data: stats
+
+};
+
+console.log("💾 TeamStats actualizado:", teamId);
+
+res.json(stats);
 
   } catch (error) {
 
