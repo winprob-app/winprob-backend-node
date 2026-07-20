@@ -243,6 +243,12 @@ const teamStatsCache = {};
 
 const TEAM_STATS_CACHE_TIME = 5 * 60 * 1000;
 
+// ==========================
+// PETICIONES TEAM STATS EN CURSO
+// ==========================
+
+const pendingTeamStats = {};
+
 app.get("/test-football-data", async (req, res) => {
 
   if (!FOOTBALL_DATA_KEY) {
@@ -558,7 +564,25 @@ if (
 
 }
 
-    const response = await axios.get(
+// ==========================
+// SI YA HAY UNA CONSULTA EN CURSO
+// ==========================
+
+if (pendingTeamStats[teamId]) {
+
+  console.log("⏳ Esperando TeamStats:", teamId);
+
+  const data = await pendingTeamStats[teamId];
+
+  return res.json(data);
+
+}
+
+    // ==========================
+// CREAR PETICIÓN ÚNICA
+// ==========================
+
+pendingTeamStats[teamId] = axios.get(
   `https://api.football-data.org/v4/teams/${teamId}/matches?status=FINISHED&limit=5`,
   {
     headers: {
@@ -566,9 +590,10 @@ if (
     }
   }
 );
-    const matches = response.data.matches;
 
-    console.log(JSON.stringify(matches, null, 2));
+const response = await pendingTeamStats[teamId];
+
+    const matches = response.data.matches;
 
     let wins = 0;
     let draws = 0;
@@ -629,11 +654,19 @@ teamStatsCache[teamId] = {
 
 };
 
+// ==========================
+// FINALIZAR PETICIÓN
+// ==========================
+
+delete pendingTeamStats[teamId];
+
 console.log("💾 TeamStats actualizado:", teamId);
 
 res.json(stats);
 
   } catch (error) {
+
+  delete pendingTeamStats[teamId];
 
   console.log("ERROR TEAM STATS");
 
