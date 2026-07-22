@@ -235,6 +235,10 @@ let lastMatchesUpdate = 0;
 
 const MATCH_CACHE_TIME = 5 * 60 * 1000;
 
+let headToHeadCache = {};
+
+const HEAD_CACHE_TIME = 30 * 60 * 1000;
+
 // ==========================
 // CACHE TEAM STATS
 // ==========================
@@ -299,6 +303,206 @@ app.get("/matches-live", async (req, res) => {
   }
 
 });
+
+async function getTeamStatsCached(teamId) {
+
+  if (
+    teamStatsCache[teamId] &&
+    (Date.now() - teamStatsCache[teamId].updated) < TEAM_STATS_CACHE_TIME
+  ) {
+    return teamStatsCache[teamId].data;
+  }
+
+  const response = await axios.get(
+    `https://api.football-data.org/v4/teams/${teamId}/matches?status=FINISHED&limit=5`,
+    {
+      headers: {
+        "X-Auth-Token": FOOTBALL_DATA_KEY
+      }
+    }
+  );
+
+  const matches = response.data.matches;
+
+  let wins = 0;
+  let draws = 0;
+  let losses = 0;
+  let goalsFor = 0;
+  let goalsAgainst = 0;
+
+  matches.forEach(match => {
+
+    const isHome = match.homeTeam.id == teamId;
+
+    const gf = isHome
+      ? match.score.fullTime.home
+      : match.score.fullTime.away;
+
+    const ga = isHome
+      ? match.score.fullTime.away
+      : match.score.fullTime.home;
+
+    goalsFor += gf ?? 0;
+    goalsAgainst += ga ?? 0;
+
+    if (gf > ga) wins++;
+    else if (gf == ga) draws++;
+    else losses++;
+
+  });
+
+  const stats = {
+
+    wins,
+    draws,
+    losses,
+
+    goalsForAverage:
+      Number(goalsFor / matches.length).toFixed(2),
+
+    goalsAgainstAverage:
+      Number(goalsAgainst / matches.length).toFixed(2)
+
+  };
+
+  teamStatsCache[teamId] = {
+
+    updated: Date.now(),
+
+    data: stats
+
+  };
+
+  return stats;
+
+}
+
+async function getTeamFormCached(teamId) {
+
+  const cacheKey = "form_" + teamId;
+
+  if (
+    teamStatsCache[cacheKey] &&
+    (Date.now() - teamStatsCache[cacheKey].updated) < TEAM_STATS_CACHE_TIME
+  ) {
+    return teamStatsCache[cacheKey].data;
+  }
+
+  const response = await axios.get(
+    `https://api.football-data.org/v4/teams/${teamId}/matches?status=FINISHED&limit=5`,
+    {
+      headers: {
+        "X-Auth-Token": FOOTBALL_DATA_KEY
+      }
+    }
+  );
+
+  const form = response.data.matches;
+
+  teamStatsCache[cacheKey] = {
+
+    updated: Date.now(),
+
+    data: form
+
+  };
+
+  return form;
+
+}
+
+async function getHeadToHeadCached(homeId, awayId) {
+
+  const cacheKey = `${homeId}_${awayId}`;
+
+  if (
+    headToHeadCache[cacheKey] &&
+    (Date.now() - headToHeadCache[cacheKey].updated) < HEAD_CACHE_TIME
+  ) {
+    return headToHeadCache[cacheKey].data;
+  }
+
+  const response = await axios.get(
+    `https://api.football-data.org/v4/teams/${homeId}/matches?status=FINISHED`,
+    {
+      headers: {
+        "X-Auth-Token": FOOTBALL_DATA_KEY
+      }
+    }
+  );
+
+  const matches = response.data.matches
+    .filter(match =>
+
+      (match.homeTeam.id == homeId &&
+       match.awayTeam.id == awayId)
+
+      ||
+
+      (match.homeTeam.id == awayId &&
+       match.awayTeam.id == homeId)
+
+    )
+    .slice(0, 5);
+
+  let homeWins = 0;
+  let awayWins = 0;
+  let draws = 0;
+
+  matches.forEach(match => {
+
+    const hg = match.score.fullTime.home;
+    const ag = match.score.fullTime.away;
+
+    if (hg == ag) {
+
+      draws++;
+
+    } else {
+
+      if (match.homeTeam.id == homeId) {
+
+        if (hg > ag)
+          homeWins++;
+        else
+          awayWins++;
+
+      } else {
+
+        if (ag > hg)
+          homeWins++;
+        else
+          awayWins++;
+
+      }
+
+    }
+
+  });
+
+  const stats = {
+
+    homeWins,
+
+    awayWins,
+
+    draws,
+
+    matches: matches.length
+
+  };
+
+  headToHeadCache[cacheKey] = {
+
+    updated: Date.now(),
+
+    data: stats
+
+  };
+
+  return stats;
+
+}
 
 app.get("/matches-v2", async (req, res) => {
 
@@ -428,94 +632,113 @@ app.get("/matches-v2", async (req, res) => {
     // MAPEO
     // ==========================
 
-    const matches = validMatches.map(match => ({
+    const matches = await Promise.all(
 
-      fixture: {
+  validMatches.map(async (match) => {
 
-        id: match.id,
-
-        date: match.utcDate,
-
-        status: {
-
-          short:
-
-            match.status === "TIMED"
-              ? "NS"
-
+    const fixture = {
+      id: match.id,
+      date: match.utcDate,
+      status: {
+        short:
+          match.status === "TIMED"
+            ? "NS"
             : match.status === "SCHEDULED"
-              ? "NS"
-
+            ? "NS"
             : match.status === "IN_PLAY"
-              ? "1H"
-
+            ? "1H"
             : match.status === "PAUSED"
-              ? "HT"
-
+            ? "HT"
             : match.status === "FINISHED"
-              ? "FT"
-
+            ? "FT"
             : match.status
+      }
+    };
 
-        }
+    const league = {
+      id: match.competition.id,
+      name: match.competition.name,
+      logo: match.competition.emblem
+    };
 
+    const teams = {
+
+      home: {
+        id: match.homeTeam.id,
+        name: match.homeTeam.name,
+        logo:
+          match.competition.code === "WC"
+            ? `https://images.football-logos.com/${match.homeTeam.id}.png`
+            : match.homeTeam.crest
       },
 
-      league: {
-
-        id: match.competition.id,
-
-        name: match.competition.name,
-
-        logo: match.competition.emblem
-
-      },
-
-      teams: {
-
-        home: {
-
-          id: match.homeTeam.id,
-
-          name: match.homeTeam.name,
-
-          logo:
-
-            match.competition.code == "WC"
-
-              ? `https://images.football-logos.com/${match.homeTeam.id}.png`
-
-              : match.homeTeam.crest
-
-        },
-
-        away: {
-
-          id: match.awayTeam.id,
-
-          name: match.awayTeam.name,
-
-          logo:
-
-            match.competition.code == "WC"
-
-              ? `https://images.football-logos.com/${match.awayTeam.id}.png`
-
-              : match.awayTeam.crest
-
-        }
-
-      },
-
-      goals: {
-
-        home: match.score.fullTime.home,
-
-        away: match.score.fullTime.away
-
+      away: {
+        id: match.awayTeam.id,
+        name: match.awayTeam.name,
+        logo:
+          match.competition.code === "WC"
+            ? `https://images.football-logos.com/${match.awayTeam.id}.png`
+            : match.awayTeam.crest
       }
 
-    }));
+    };
+
+    const goals = {
+      home: match.score.fullTime.home,
+      away: match.score.fullTime.away
+    };
+
+    const homeStats =
+    await getTeamStatsCached(match.homeTeam.id);
+
+const awayStats =
+    await getTeamStatsCached(match.awayTeam.id);
+
+const homeForm =
+    await getTeamFormCached(match.homeTeam.id);
+
+const awayForm =
+    await getTeamFormCached(match.awayTeam.id);
+
+const headToHead =
+    await getHeadToHeadCached(
+      match.homeTeam.id,
+      match.awayTeam.id
+    );
+    
+return {
+
+  fixture,
+
+  league,
+
+  teams,
+
+  goals,
+
+  stats: {
+
+    home: homeStats,
+
+    away: awayStats
+
+  },
+
+  form: {
+
+    home: homeForm,
+
+    away: awayForm
+
+  },
+
+  headToHead: headToHead
+
+};
+
+  })
+
+);
 
     // ==========================
     // GUARDAR CACHE
@@ -539,256 +762,6 @@ app.get("/matches-v2", async (req, res) => {
 
       error: "Error Football-Data"
 
-    });
-
-  }
-
-});
-
-app.get("/team-stats/:teamId", async (req, res) => {
-
-  try {
-
-    const teamId = req.params.teamId;
-
-    const now = Date.now();
-
-if (
-  teamStatsCache[teamId] &&
-  (now - teamStatsCache[teamId].updated) < TEAM_STATS_CACHE_TIME
-) {
-
-  console.log("📦 TeamStats desde CACHE:", teamId);
-
-  return res.json(teamStatsCache[teamId].data);
-
-}
-
-// ==========================
-// SI YA HAY UNA CONSULTA EN CURSO
-// ==========================
-
-if (pendingTeamStats[teamId]) {
-
-  console.log("⏳ Esperando TeamStats:", teamId);
-
-  const data = await pendingTeamStats[teamId];
-
-  return res.json(data);
-
-}
-
-    // ==========================
-// CREAR PETICIÓN ÚNICA
-// ==========================
-
-pendingTeamStats[teamId] = axios.get(
-  `https://api.football-data.org/v4/teams/${teamId}/matches?status=FINISHED&limit=5`,
-  {
-    headers: {
-      "X-Auth-Token": FOOTBALL_DATA_KEY
-    }
-  }
-);
-
-const response = await pendingTeamStats[teamId];
-
-    const matches = response.data.matches;
-
-    let wins = 0;
-    let draws = 0;
-    let losses = 0;
-
-    let goalsFor = 0;
-    let goalsAgainst = 0;
-
-    matches.forEach(match => {
-
-      const isHome =
-        match.homeTeam.id == teamId;
-
-      const gf = isHome
-        ? match.score.fullTime.home
-        : match.score.fullTime.away;
-
-      const ga = isHome
-        ? match.score.fullTime.away
-        : match.score.fullTime.home;
-
-      goalsFor += gf ?? 0;
-      goalsAgainst += ga ?? 0;
-
-      if (gf > ga) wins++;
-      else if (gf == ga) draws++;
-      else losses++;
-
-    });
-
-    const stats = {
-
-  wins,
-  draws,
-  losses,
-
-  goalsForAverage:
-    Number(
-      goalsFor / matches.length
-    ).toFixed(2),
-
-  goalsAgainstAverage:
-    Number(
-      goalsAgainst / matches.length
-    ).toFixed(2)
-
-};
-
-// ==========================
-// GUARDAR CACHE
-// ==========================
-
-teamStatsCache[teamId] = {
-
-  updated: Date.now(),
-
-  data: stats
-
-};
-
-// ==========================
-// FINALIZAR PETICIÓN
-// ==========================
-
-delete pendingTeamStats[teamId];
-
-console.log("💾 TeamStats actualizado:", teamId);
-
-res.json(stats);
-
-  } catch (error) {
-
-  delete pendingTeamStats[teamId];
-
-  console.log("ERROR TEAM STATS");
-
-  console.log(error.response?.status);
-
-  console.log(error.response?.data);
-
-  console.log(error.message);
-
-  res.status(500).json({
-    error: error.response?.data || error.message
-  });
-
-}
-
-});
-
-app.get("/head-to-head/:homeId/:awayId", async (req, res) => {
-
-  try {
-
-    const homeId = req.params.homeId;
-    const awayId = req.params.awayId;
-
-    const response = await axios.get(
-      `https://api.football-data.org/v4/teams/${homeId}/matches?status=FINISHED`,
-      {
-        headers: {
-          "X-Auth-Token": FOOTBALL_DATA_KEY
-        }
-      }
-    );
-
-    const matches = response.data.matches
-      .filter(match =>
-
-        (match.homeTeam.id == homeId &&
-         match.awayTeam.id == awayId)
-
-        ||
-
-        (match.homeTeam.id == awayId &&
-         match.awayTeam.id == homeId)
-
-      )
-      .slice(0, 5);
-
-    let homeWins = 0;
-    let awayWins = 0;
-    let draws = 0;
-
-    matches.forEach(match => {
-
-      const hg = match.score.fullTime.home;
-      const ag = match.score.fullTime.away;
-
-      if (hg == ag) {
-
-        draws++;
-
-      } else {
-
-        if (match.homeTeam.id == homeId) {
-
-          if (hg > ag) homeWins++;
-          else awayWins++;
-
-        } else {
-
-          if (ag > hg) homeWins++;
-          else awayWins++;
-
-        }
-
-      }
-
-    });
-
-    res.json({
-
-      homeWins,
-      awayWins,
-      draws,
-      matches: matches.length
-
-    });
-
-  } catch (error) {
-
-    console.log(error.response?.data || error.message);
-
-    res.status(500).json({
-      error: "Error Head To Head"
-    });
-
-  }
-
-});
-
-app.get("/team-form/:teamId", async (req, res) => {
-
-  try {
-
-    const teamId = req.params.teamId;
-
-    const response = await axios.get(
-      `https://api.football-data.org/v4/teams/${teamId}/matches?status=FINISHED&limit=5`,
-      {
-        headers: {
-          "X-Auth-Token": FOOTBALL_DATA_KEY
-        }
-      }
-    );
-
-    res.json(response.data.matches);
-
-  } catch (error) {
-
-    console.log(error.response?.data || error.message);
-
-    res.status(500).json({
-      error: "Error obteniendo forma"
     });
 
   }
