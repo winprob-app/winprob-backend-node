@@ -1,3 +1,6 @@
+require("dotenv").config();
+console.log(process.env);
+
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
@@ -304,79 +307,6 @@ app.get("/matches-live", async (req, res) => {
 
 });
 
-async function getTeamStatsCached(teamId) {
-
-  if (
-    teamStatsCache[teamId] &&
-    (Date.now() - teamStatsCache[teamId].updated) < TEAM_STATS_CACHE_TIME
-  ) {
-    return teamStatsCache[teamId].data;
-  }
-
-  const response = await axios.get(
-    `https://api.football-data.org/v4/teams/${teamId}/matches?status=FINISHED&limit=5`,
-    {
-      headers: {
-        "X-Auth-Token": FOOTBALL_DATA_KEY
-      }
-    }
-  );
-
-  const matches = response.data.matches;
-
-  let wins = 0;
-  let draws = 0;
-  let losses = 0;
-  let goalsFor = 0;
-  let goalsAgainst = 0;
-
-  matches.forEach(match => {
-
-    const isHome = match.homeTeam.id == teamId;
-
-    const gf = isHome
-      ? match.score.fullTime.home
-      : match.score.fullTime.away;
-
-    const ga = isHome
-      ? match.score.fullTime.away
-      : match.score.fullTime.home;
-
-    goalsFor += gf ?? 0;
-    goalsAgainst += ga ?? 0;
-
-    if (gf > ga) wins++;
-    else if (gf == ga) draws++;
-    else losses++;
-
-  });
-
-  const stats = {
-
-    wins,
-    draws,
-    losses,
-
-    goalsForAverage:
-      Number(goalsFor / matches.length).toFixed(2),
-
-    goalsAgainstAverage:
-      Number(goalsAgainst / matches.length).toFixed(2)
-
-  };
-
-  teamStatsCache[teamId] = {
-
-    updated: Date.now(),
-
-    data: stats
-
-  };
-
-  return stats;
-
-}
-
 async function getTeamFormCached(teamId) {
 
   const cacheKey = "form_" + teamId;
@@ -389,7 +319,7 @@ async function getTeamFormCached(teamId) {
   }
 
   const response = await axios.get(
-    `https://api.football-data.org/v4/teams/${teamId}/matches?status=FINISHED&limit=5`,
+    `https://api.football-data.org/v4/teams/${teamId}/matches?status=FINISHED`,
     {
       headers: {
         "X-Auth-Token": FOOTBALL_DATA_KEY
@@ -397,7 +327,8 @@ async function getTeamFormCached(teamId) {
     }
   );
 
-  const form = response.data.matches;
+  const form =
+response.data.matches.slice(0,5);
 
   teamStatsCache[cacheKey] = {
 
@@ -506,6 +437,8 @@ async function getHeadToHeadCached(homeId, awayId) {
 
 app.get("/matches-v2", async (req, res) => {
 
+  console.log("===== INICIO MATCHES V2 =====");
+
   try {
 
     const now = Date.now();
@@ -529,52 +462,88 @@ app.get("/matches-v2", async (req, res) => {
     // FECHAS
     // ==========================
 
-    const today = new Date();
+    // Fecha actual del servidor
+const today = new Date();
 
-    const from = today.toISOString().split("T")[0];
+const from = today.toISOString().split("T")[0];
 
-    const future = new Date(today);
-    future.setDate(today.getDate() + 9);
+const future = new Date(today);
 
-    const to = future.toISOString().split("T")[0];
+// Football-Data permite máximo 10 días
+future.setDate(today.getDate() + 9);
+
+const to = future.toISOString().split("T")[0];
+
+console.log("FROM:", from);
+console.log("TO:", to);
 
     // ==========================
     // CONSULTAS
     // ==========================
 
-    const [scheduledResponse, liveResponse] = await Promise.all([
+  console.log("Consultando Football-Data...");
 
-      axios.get(
-        `https://api.football-data.org/v4/matches?dateFrom=${from}&dateTo=${to}`,
-        {
-          headers: {
-            "X-Auth-Token": FOOTBALL_DATA_KEY
-          }
-        }
-      ),
+    let scheduledResponse;
+let liveResponse;
 
-      axios.get(
-        "https://api.football-data.org/v4/matches",
-        {
-          headers: {
-            "X-Auth-Token": FOOTBALL_DATA_KEY
-          }
-        }
-      )
+try {
 
-    ]);
+console.log("FROM:", from);
+console.log("TO:", to);
+
+console.log("API KEY:", FOOTBALL_DATA_KEY?.substring(0, 8));
+
+  scheduledResponse = await axios.get(
+  `https://api.football-data.org/v4/matches?dateFrom=${from}&dateTo=${to}`,
+  {
+    headers: {
+      "X-Auth-Token": FOOTBALL_DATA_KEY
+    }
+  }
+);
+
+  console.log("✅ Scheduled OK");
+
+  console.log(scheduledResponse.data);
+
+} catch(err){
+
+  console.log("❌ Scheduled ERROR");
+
+  console.log(err.response?.status);
+
+  console.log(err.response?.data);
+
+}
+
+// Ya no usamos Football-Data.
+// Los partidos vienen de TheSportsDB.
+
 
     // ==========================
     // UNIR PARTIDOS
     // ==========================
 
+if (!scheduledResponse && !liveResponse) {
+
+  throw new Error(
+    "Football-Data no respondió porque se alcanzó el límite de peticiones."
+  );
+
+}
+
     const allMatches = [
 
-      ...scheduledResponse.data.matches,
+    ...(liveResponse?.data?.matches || []),
 
-      ...liveResponse.data.matches
+    ...(scheduledResponse?.data?.matches || [])
 
-    ];
+];
+
+    console.log(
+  "ALL MATCHES:",
+  allMatches.length
+);
 
     // ==========================
     // ELIMINAR DUPLICADOS
@@ -593,21 +562,26 @@ app.get("/matches-v2", async (req, res) => {
     // ==========================
 
     const allowedCompetitions = [
+  "PL",      // Premier League
+  "PD",      // LaLiga
+  "SA",      // Serie A
+  "BL1",     // Bundesliga
+  "FL1",     // Ligue 1
+  "DED",     // Eredivisie
+  "PPL",     // Primeira Liga
+  "ELC",     // Championship
+  "CLI",     // Libertadores
+  "BSA"      // Brasileirão
+];
 
-      "WC",
-      "CL",
-      "PL",
-      "PD",
-      "SA",
-      "BL1",
-      "FL1",
-      "EL",
-      "ECL",
-      "BSA",
-      "DED",
-      "PPL"
-
-    ];
+console.log(
+  uniqueMatches.map(m => ({
+    competition: m.competition.code,
+    home: m.homeTeam?.name,
+    away: m.awayTeam?.name,
+    status: m.status
+  }))
+);
 
     const filteredMatches = uniqueMatches.filter(match =>
 
@@ -628,13 +602,195 @@ app.get("/matches-v2", async (req, res) => {
 
     );
 
+    
+    
+// ==========================
+// CALCULAR FORMA DEL EQUIPO
+// ==========================
+
+function calculateTeamForm(teamId, allMatches) {
+
+  const recentMatches = allMatches
+    .filter(
+  m =>
+    (m.homeTeam?.id == teamId ||
+     m.awayTeam?.id == teamId) &&
+    m.status === "FINISHED"
+)
+    .slice(-10);
+
+  intWins = 0;
+  intDraws = 0;
+  intLosses = 0;
+
+  intGoalsFor = 0;
+  intGoalsAgainst = 0;
+
+  recentMatches.forEach(match => {
+
+    if (match.score?.fullTime?.home == null) return;
+
+    const isHome =
+        match.homeTeam.id == teamId;
+
+    const goalsFor =
+        isHome
+            ? match.score.fullTime.home
+            : match.score.fullTime.away;
+
+    const goalsAgainst =
+        isHome
+            ? match.score.fullTime.away
+            : match.score.fullTime.home;
+
+    intGoalsFor += goalsFor;
+    intGoalsAgainst += goalsAgainst;
+
+    if (goalsFor > goalsAgainst) {
+      intWins++;
+    } else if (goalsFor == goalsAgainst) {
+      intDraws++;
+    } else {
+      intLosses++;
+    }
+
+  });
+
+console.log("TEAM:", teamId);
+console.log(recentMatches);
+
+  return {
+
+    "wins": intWins,
+    "draws": intDraws,
+    "losses": intLosses,
+
+    "goalsForAverage":
+        recentMatches.isEmpty
+            ? 0
+            : intGoalsFor / recentMatches.length,
+
+    "goalsAgainstAverage":
+        recentMatches.isEmpty
+            ? 0
+            : intGoalsAgainst / recentMatches.length,
+
+  };
+
+}
+
+/* async function getTeamStatsFromApi(teamId) {
+
+  if (
+    teamStatsCache[teamId] &&
+    (Date.now() - teamStatsCache[teamId].updated) < TEAM_STATS_CACHE_TIME
+  ) {
+    return teamStatsCache[teamId].data;
+  }
+
+  const response = await axios.get(
+    `https://api.football-data.org/v4/teams/${teamId}/matches?status=FINISHED&limit=5`,
+    {
+      headers: {
+        "X-Auth-Token": FOOTBALL_DATA_KEY
+      }
+    }
+  );
+
+  const matches = (response.data.matches || []).slice(0, 5);
+
+  let wins = 0;
+  let draws = 0;
+  let losses = 0;
+
+  let goalsFor = 0;
+  let goalsAgainst = 0;
+
+  matches.forEach(match => {
+
+    const isHome = match.homeTeam.id == teamId;
+
+    const gf = isHome
+      ? match.score.fullTime.home
+      : match.score.fullTime.away;
+
+    const ga = isHome
+      ? match.score.fullTime.away
+      : match.score.fullTime.home;
+
+    goalsFor += gf ?? 0;
+    goalsAgainst += ga ?? 0;
+
+    if (gf > ga) wins++;
+    else if (gf == ga) draws++;
+    else losses++;
+
+  });
+
+  const stats = {
+
+    wins,
+    draws,
+    losses,
+
+    goalsForAverage:
+      matches.length == 0
+        ? 0
+        : goalsFor / matches.length,
+
+    goalsAgainstAverage:
+      matches.length == 0
+        ? 0
+        : goalsAgainst / matches.length,
+
+  };
+
+  teamStatsCache[teamId] = {
+
+    updated: Date.now(),
+    data: stats
+
+  };
+
+  return stats;
+
+} */
+
     // ==========================
     // MAPEO
     // ==========================
 
+console.log("ANTES DEL PROMISE ALL");
+
+// ==========================
+// PRECARGAR STATS DE EQUIPOS
+// ==========================
+
+const statsMap = {};
+
     const matches = await Promise.all(
 
   validMatches.map(async (match) => {
+
+// ==========================
+// ESTADÍSTICAS DEL EQUIPO
+// ==========================
+
+const homeStats = {
+  wins: 0,
+  draws: 0,
+  losses: 0,
+  goalsForAverage: 0,
+  goalsAgainstAverage: 0
+};
+
+const awayStats = {
+  wins: 0,
+  draws: 0,
+  losses: 0,
+  goalsForAverage: 0,
+  goalsAgainstAverage: 0
+};
 
     const fixture = {
       id: match.id,
@@ -688,51 +844,26 @@ app.get("/matches-v2", async (req, res) => {
       away: match.score.fullTime.away
     };
 
-    const homeStats =
-    await getTeamStatsCached(match.homeTeam.id);
-
-const awayStats =
-    await getTeamStatsCached(match.awayTeam.id);
-
-const homeForm =
-    await getTeamFormCached(match.homeTeam.id);
-
-const awayForm =
-    await getTeamFormCached(match.awayTeam.id);
-
-const headToHead =
-    await getHeadToHeadCached(
-      match.homeTeam.id,
-      match.awayTeam.id
-    );
     
+console.log(
+  "Procesando:",
+  match.homeTeam.name,
+  "vs",
+  match.awayTeam.name
+);
+
 return {
 
   fixture,
-
   league,
-
   teams,
-
   goals,
 
-  stats: {
+  stats: {},
 
-    home: homeStats,
+form: {},
 
-    away: awayStats
-
-  },
-
-  form: {
-
-    home: homeForm,
-
-    away: awayForm
-
-  },
-
-  headToHead: headToHead
+  headToHead: {},
 
 };
 
@@ -754,17 +885,27 @@ return {
 
     res.json(matchesCache);
 
-  } catch (error) {
+  } 
+  
+   catch (error) {
 
-    console.log(error.response?.data || error.message);
+  console.log("ERROR MATCHES V2");
 
-    res.status(500).json({
+  console.log(error.response?.status);
 
-      error: "Error Football-Data"
+  if (matchesCache.length > 0) {
 
-    });
+    console.log("📦 DEVOLVIENDO CACHE POR ERROR");
+
+    return res.json(matchesCache);
 
   }
+
+  res.status(500).json({
+    error: error.message
+  });
+
+}
 
 });
 
