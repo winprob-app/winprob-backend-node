@@ -1,6 +1,9 @@
 require("dotenv").config();
 console.log(process.env);
 
+console.log("========== INDEX NUEVO ==========");
+console.log("SOY EL INDEX LOCAL DE DUVAN");
+
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
@@ -42,27 +45,132 @@ app.get("/matches", async (req, res) => {
       return res.json(cachedMatches);
     }
 
-    console.log("🌍 CONSULTANDO THESPORTSDB");
+    
+console.log("🌍 CONSULTANDO THESPORTSDB");
 
-const today = new Date()
-  .toISOString()
-  .split("T")[0];
+// ==========================
+// FECHAS
+// ==========================
 
-const response = await axios.get(
-  `https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${today}&s=Soccer`
-);
+const today = new Date();
 
-const events = response.data.events || [];
+console.log("Fecha actual servidor:", today);
+
+const sevenDaysAgo = new Date(today);
+sevenDaysAgo.setDate(today.getDate() - 7);
+
+const sevenDaysLater = new Date(today);
+sevenDaysLater.setDate(today.getDate() + 7);
+
+const formatDate = (date) =>
+  date.toISOString().split("T")[0];
+
+// ==========================
+// CONSULTAS EN PARALELO
+// ==========================
+
+const requests = [];
+
+for (let i = -7; i <= 7; i++) {
+
+  const date = new Date(today);
+
+  date.setDate(today.getDate() + i);
+
+  requests.push(
+
+    axios.get(
+      `https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${formatDate(date)}&s=Soccer`
+    )
+
+  );
+
+}
+
+const responses = await Promise.all(requests);
+
+console.log("========== RESPUESTAS ==========");
+
+responses.forEach((response, index) => {
+
+  const cantidad =
+      response.data.events
+      ? response.data.events.length
+      : 0;
+
+  console.log(
+    `${formatDate(new Date(today.getTime() + (index - 7) * 86400000))} -> ${cantidad}`
+  );
+
+});
+
+console.log("========== RESPUESTAS ==========");
+
+responses.forEach((response, index) => {
+
+  const cantidad = response.data.events
+      ? response.data.events.length
+      : 0;
+
+  console.log(
+    `Día ${index - 7}: ${cantidad} partidos`
+  );
+
+});
+
+let events = [];
+
+// ==========================
+// UNIR TODOS LOS PARTIDOS
+// ==========================
+
+for (const response of responses) {
+
+  events.push(
+    ...(response.data.events || [])
+  );
+
+}
+
+// ==========================
+// ELIMINAR DUPLICADOS
+// ==========================
+
+events = [
+  ...new Map(
+    events.map(event => [event.idEvent, event])
+  ).values()
+];
+
+// ==========================
+// ORDENAR POR FECHA
+// ==========================
 
 events.sort((a, b) =>
   new Date(a.strTimestamp) -
   new Date(b.strTimestamp)
 );
 
+console.log("PARTIDOS ENCONTRADOS:", events.length);
+
+events.forEach(event => {
+
+  console.log(
+    event.strTimestamp,
+    "-",
+    event.strLeague,
+    "-",
+    event.strHomeTeam,
+    "vs",
+    event.strAwayTeam
+  );
+
+});
+
 cachedMatches = events.map(event => ({
 
   fixture: {
-    id: event.idEvent,
+  id: parseInt(event.idEvent),
     date: event.strTimestamp,
     status: {
       short: event.strStatus
@@ -70,23 +178,23 @@ cachedMatches = events.map(event => ({
   },
 
   league: {
-    id: event.idLeague,
+  id: parseInt(event.idLeague),
     name: event.strLeague,
     logo: event.strLeagueBadge
   },
 
   teams: {
-    home: {
-      id: event.idHomeTeam,
-      name: event.strHomeTeam,
-      logo: event.strHomeTeamBadge
-    },
-    away: {
-      id: event.idAwayTeam,
-      name: event.strAwayTeam,
-      logo: event.strAwayTeamBadge
-    }
+  home: {
+    id: parseInt(event.idHomeTeam),
+    name: event.strHomeTeam,
+    logo: event.strHomeTeamBadge
   },
+  away: {
+    id: parseInt(event.idAwayTeam),
+    name: event.strAwayTeam,
+    logo: event.strAwayTeamBadge
+  }
+},
 
   goals: {
   home: event.intHomeScore == null
@@ -256,7 +364,7 @@ const TEAM_STATS_CACHE_TIME = 5 * 60 * 1000;
 
 const pendingTeamStats = {};
 
-app.get("/test-football-data", async (req, res) => {
+/* app.get("/test-football-data", async (req, res) => {
 
   if (!FOOTBALL_DATA_KEY) {
 
@@ -271,9 +379,9 @@ app.get("/test-football-data", async (req, res) => {
     message: "Football-Data configurada correctamente"
   });
 
-});
+}); */
 
-app.get("/matches-live", async (req, res) => {
+/* app.get("/matches-live", async (req, res) => {
 
   try {
 
@@ -305,9 +413,9 @@ app.get("/matches-live", async (req, res) => {
 
   }
 
-});
+}); */
 
-async function getTeamFormCached(teamId) {
+/* async function getTeamFormCached(teamId) {
 
   const cacheKey = "form_" + teamId;
 
@@ -340,9 +448,9 @@ response.data.matches.slice(0,5);
 
   return form;
 
-}
+} */
 
-async function getHeadToHeadCached(homeId, awayId) {
+/* async function getHeadToHeadCached(homeId, awayId) {
 
   const cacheKey = `${homeId}_${awayId}`;
 
@@ -433,7 +541,7 @@ async function getHeadToHeadCached(homeId, awayId) {
 
   return stats;
 
-}
+} */
 
 app.get("/matches-v2", async (req, res) => {
 
@@ -603,82 +711,6 @@ console.log(
     );
 
     
-    
-// ==========================
-// CALCULAR FORMA DEL EQUIPO
-// ==========================
-
-function calculateTeamForm(teamId, allMatches) {
-
-  const recentMatches = allMatches
-    .filter(
-  m =>
-    (m.homeTeam?.id == teamId ||
-     m.awayTeam?.id == teamId) &&
-    m.status === "FINISHED"
-)
-    .slice(-10);
-
-  intWins = 0;
-  intDraws = 0;
-  intLosses = 0;
-
-  intGoalsFor = 0;
-  intGoalsAgainst = 0;
-
-  recentMatches.forEach(match => {
-
-    if (match.score?.fullTime?.home == null) return;
-
-    const isHome =
-        match.homeTeam.id == teamId;
-
-    const goalsFor =
-        isHome
-            ? match.score.fullTime.home
-            : match.score.fullTime.away;
-
-    const goalsAgainst =
-        isHome
-            ? match.score.fullTime.away
-            : match.score.fullTime.home;
-
-    intGoalsFor += goalsFor;
-    intGoalsAgainst += goalsAgainst;
-
-    if (goalsFor > goalsAgainst) {
-      intWins++;
-    } else if (goalsFor == goalsAgainst) {
-      intDraws++;
-    } else {
-      intLosses++;
-    }
-
-  });
-
-console.log("TEAM:", teamId);
-console.log(recentMatches);
-
-  return {
-
-    "wins": intWins,
-    "draws": intDraws,
-    "losses": intLosses,
-
-    "goalsForAverage":
-        recentMatches.isEmpty
-            ? 0
-            : intGoalsFor / recentMatches.length,
-
-    "goalsAgainstAverage":
-        recentMatches.isEmpty
-            ? 0
-            : intGoalsAgainst / recentMatches.length,
-
-  };
-
-}
-
 /* async function getTeamStatsFromApi(teamId) {
 
   if (
@@ -765,8 +797,6 @@ console.log("ANTES DEL PROMISE ALL");
 // ==========================
 // PRECARGAR STATS DE EQUIPOS
 // ==========================
-
-const statsMap = {};
 
     const matches = await Promise.all(
 
