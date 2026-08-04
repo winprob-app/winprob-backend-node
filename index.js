@@ -28,6 +28,32 @@ const FOOTBALL_DATA_KEY =
 
 fs.ensureDirSync(LOGOS_FOLDER);
 
+// ==========================
+// HEALTH CHECK
+// ==========================
+
+app.get("/health", (req, res) => {
+
+  res.json({
+
+    status: "ok",
+
+    server: "WinProb Backend",
+
+    version: "1.0.0",
+
+    uptime: Math.floor(process.uptime()),
+
+    timestamp: new Date().toISOString(),
+
+    matches: cachedMatches.length,
+
+    cacheLoaded: cachedMatches.length > 0
+
+  });
+
+});
+
 app.get("/matches", async (req, res) => {
 
   try {
