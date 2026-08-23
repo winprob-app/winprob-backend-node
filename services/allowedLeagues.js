@@ -1,0 +1,33 @@
+const allowedIsportsLeagues = [
+  "Categoria Primera A",
+  "Colombia Copa Cup",
+  "England Premier League",
+  "England Championship",
+  "Spanish La Liga",
+  "Spanish La Liga 2",
+  "Serie A",
+  "Serie B",
+  "German Bundesliga",
+  "France Ligue 1",
+  "France Ligue 2",
+  "Brazil Serie A",
+  "Brazil Serie B",
+  "Brazil Serie C",
+  "Brazil Serie D",
+  "Argentina Division 1",
+  "Argentine Division 1",
+  "Argentina Division 2",
+  "Argentine Division 2",
+  "Liga Portugal 1",
+  "Liga Portugal 2",
+  "Holland Eredivisie",
+  "USA Major League Soccer",
+  "Saudi Professional League",
+  "Primera Division de Paraguay",
+  "Chile Primera Division",
+  "Primera Division Liga MX",
+  "Copa Libertadores",
+  "Copa Sudamericana"
+];
+
+module.exports = { allowedIsportsLeagues };
