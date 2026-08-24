@@ -36,11 +36,8 @@ async function saveIndex(index) {
 
 async function runLogoSyncTick() {
   try {
-        const { data: leagueRows, error } = await supabase
-      .from("matches")
-      .select("league_id, league_name")
-      .lt("id", 0)
-      .range(0, 4999);
+            const { data: leagueRows, error } = await supabase
+      .rpc("get_isports_leagues");
 
     if (error) {
       console.error("❌ ERROR LEYENDO LIGAS PARA SYNC AUTOMÁTICO:", error.message);
