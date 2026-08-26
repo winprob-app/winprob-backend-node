@@ -41,6 +41,7 @@ const matchesRouter = require("./routes/matches");
 const logoRouter = require("./routes/logo");
 const teamMatchesRouter = require("./routes/teamMatches");
 const headToHeadRouter = require("./routes/headToHead");
+const importHistoryRouter = require("./routes/importHistory");
 const syncLogosRouter = require("./routes/syncLogos");
 
 const app = express();
@@ -57,6 +58,7 @@ app.use("/stats", statsRouter);
 app.use("/logo", logoRouter);
 app.use("/team-matches", teamMatchesRouter);
 app.use("/head-to-head", headToHeadRouter);
+app.use("/import-history", importHistoryRouter);
 app.use("/sync-logos", syncLogosRouter);
 
 // ==========================

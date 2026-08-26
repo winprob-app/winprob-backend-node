@@ -5,6 +5,7 @@ const { supabase } = require("../index");
 const axios = require("axios");
 const { getMatchesByDate } = require("../services/isports");
 const { allowedIsportsLeagues } = require("../services/allowedLeagues");
+const { getDisplayLeagueName } = require("../services/leagueAliases");
 const { getTeamLogoFromCache } = require("../services/logoStorage");
 const {
   getLocalTeamLogo,
@@ -426,9 +427,9 @@ cachedMatches = events.map(event => ({
     }
   },
 
-  league: {
+    league: {
   id: parseInt(event.idLeague),
-    name: event.strLeague,
+    name: getDisplayLeagueName(event.strLeague),
     logo: event.strLeagueBadge
   },
 
