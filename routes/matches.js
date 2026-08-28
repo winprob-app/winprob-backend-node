@@ -4,7 +4,6 @@ const { supabase } = require("../index");
 
 const axios = require("axios");
 const { getMatchesByDate } = require("../services/apiFootball");
-const { allowedIsportsLeagues } = require("../services/allowedLeagues");
 const { getDisplayLeagueName } = require("../services/leagueAliases");
 
 let cachedMatches = [];
@@ -158,9 +157,7 @@ console.log(
 );
 
 
-const filteredIsportsEvents = isportsEvents.filter(event =>
-  allowedIsportsLeagues.includes(event?.strLeague)
-);
+const filteredIsportsEvents = isportsEvents;
 
 console.log(
   "📊 iSPORTS ANTES DEL FILTRO:",
