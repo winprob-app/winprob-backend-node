@@ -36,6 +36,7 @@ const sharp = require("sharp");
 const statsRouter = require("./routes/stats");
 const updateTeamStats = require("./services/updateTeamStats");
 const { runLogoSyncTick } = require("./services/logoSync");
+const { getFixtures } = require("./services/apiFootball");
 
 const matchesRouter = require("./routes/matches");
 const logoRouter = require("./routes/logo");
@@ -97,6 +98,13 @@ app.get("/health", (req, res) => {
 
   });
 
+});
+
+app.get("/test-apifootball", async (req, res) => {
+  const today = new Date().toISOString().split("T")[0];
+  const result = await getFixtures({ date: today });
+
+  return res.json(result);
 });
 
 // ==========================
