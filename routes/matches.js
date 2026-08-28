@@ -3,15 +3,9 @@ const router = express.Router();
 const { supabase } = require("../index");
 
 const axios = require("axios");
-const { getMatchesByDate } = require("../services/isports");
+const { getMatchesByDate } = require("../services/apiFootball");
 const { allowedIsportsLeagues } = require("../services/allowedLeagues");
 const { getDisplayLeagueName } = require("../services/leagueAliases");
-const { getTeamLogoFromCache } = require("../services/logoStorage");
-const {
-  getLocalTeamLogo,
-  getLocalLeagueLogo,
-  normalizeLogoName
-} = require("../services/logoCatalog");
 
 let cachedMatches = [];
 let lastUpdate = 0;
@@ -66,13 +60,13 @@ for (let i = -7; i <= 7; i++) {
 // iSPORTS: solo hoy + mañana + pasado mañana
 // ==========================
 
-const isportsDates = [];
+const apiFootballDates = [];
 
 for (let i = 0; i <= 2; i++) {
   const date = new Date(today);
   date.setDate(today.getDate() + i);
 
-  isportsDates.push(formatDate(date));
+  apiFootballDates.push(formatDate(date));
 }
 
 // ==========================
@@ -89,7 +83,7 @@ const sportsDbRequests = sportsDbDates.map((date) =>
 // iSPORTS
 // ==========================
 
-const isportsRequests = isportsDates.map((date) =>
+const apiFootballRequests = apiFootballDates.map((date) =>
   getMatchesByDate(date)
 );
 
@@ -100,7 +94,7 @@ const isportsRequests = isportsDates.map((date) =>
 const [sportsDbResponses, isportsResponses] =
   await Promise.all([
     Promise.all(sportsDbRequests),
-    Promise.all(isportsRequests),
+    Promise.all(apiFootballRequests),
   ]);
 
 console.log(
@@ -165,7 +159,7 @@ console.log(
 
 
 const filteredIsportsEvents = isportsEvents.filter(event =>
-  allowedIsportsLeagues.includes(event?.leagueName)
+  allowedIsportsLeagues.includes(event?.strLeague)
 );
 
 console.log(
@@ -181,139 +175,18 @@ console.log(
 console.log(
   "📋 DETALLE FILTRADO iSPORTS:",
   filteredIsportsEvents.slice(0, 156).map(event => ({
-    leagueName: event?.leagueName,
-    homeName: event?.homeName,
-    awayName: event?.awayName,
-    date: event?.matchTime
-      ? new Date(Number(event.matchTime) * 1000).toISOString()
-      : null
+    leagueName: event?.strLeague,
+    homeName: event?.strHomeTeam,
+    awayName: event?.strAwayTeam,
+    date: event?.strTimestamp || null
   }))
 );
 
 // ==========================
-// CONVERTIR iSPORTS
+// API-FOOTBALL YA VIENE CONVERTIDO
 // ==========================
 
-function buildLocalLogoMap(names, getLocalLogo) {
-  return Object.fromEntries(
-    [
-      ...new Map(
-        names
-          .filter(Boolean)
-          .map(name => [normalizeLogoName(name), name])
-      ).values()
-    ].map(name => [
-      normalizeLogoName(name),
-      getLocalLogo(name)
-    ])
-  );
-}
-
-function extractUniqueTeams(events) {
-  const teamMap = new Map();
-
-  events.forEach(event => {
-    if (event?.homeName) {
-      teamMap.set(normalizeLogoName(event.homeName), {
-        id: event.homeId,
-        name: event.homeName
-      });
-    }
-    if (event?.awayName) {
-      teamMap.set(normalizeLogoName(event.awayName), {
-        id: event.awayId,
-        name: event.awayName
-      });
-    }
-  });
-
-  return [...teamMap.values()];
-}
-
-const uniqueTeams = extractUniqueTeams(filteredIsportsEvents);
-
-const teamLogoEntries = await Promise.all(
-  uniqueTeams.map(async (team) => {
-    const key = normalizeLogoName(team.name);
-    const localLogo = getLocalTeamLogo(team.name);
-
-    if (localLogo) {
-      return [key, localLogo];
-    }
-
-    const cachedLogo = await getTeamLogoFromCache(team.name);
-    return [key, cachedLogo || ""];
-  })
-);
-
-const teamLogoMap = Object.fromEntries(teamLogoEntries);
-
-
-const leagueLogoMap = buildLocalLogoMap(
-  filteredIsportsEvents.map(event => event?.leagueName),
-  getLocalLeagueLogo
-);
-
-const convertedIsportsEvents = filteredIsportsEvents
-  .map(event => {
-
-    if (!event) return null;
-
-    const timestamp = Number(event.matchTime);
-    const leagueNameKey = normalizeLogoName(event.leagueName);
-    const homeNameKey = normalizeLogoName(event.homeName);
-    const awayNameKey = normalizeLogoName(event.awayName);
-
-    return {
-      // ID negativo para evitar conflictos con TheSportsDB
-      idEvent: -parseInt(event.matchId),
-
-      strTimestamp:
-        new Date(timestamp * 1000).toISOString(),
-
-      strStatus:
-        Number(event.status) === 0
-          ? "LIVE"
-          : Number(event.status) === -1
-            ? "FT"
-            : "NS",
-
-      idLeague:
-        parseInt(event.leagueId),
-
-      strLeague:
-        event.leagueName,
-
-      strLeagueBadge: leagueLogoMap[leagueNameKey] ?? "",
-
-      idHomeTeam:
-        parseInt(event.homeId),
-
-      strHomeTeam:
-        event.homeName,
-
-      strHomeTeamBadge: teamLogoMap[homeNameKey] ?? "",
-
-      idAwayTeam:
-        parseInt(event.awayId),
-
-      strAwayTeam:
-        event.awayName,
-
-      strAwayTeamBadge: teamLogoMap[awayNameKey] ?? "",
-
-      intHomeScore:
-        event.homeScore == null
-          ? null
-          : parseInt(event.homeScore),
-
-      intAwayScore:
-        event.awayScore == null
-          ? null
-          : parseInt(event.awayScore)
-    };
-  })
-  .filter(event => event !== null);
+const convertedIsportsEvents = filteredIsportsEvents;
 
 console.log(
   "📊 iSPORTS CONVERTIDOS:",
@@ -381,22 +254,20 @@ const sportsDbIds = new Set(
 );
 
 const isportsMatchedIds = filteredIsportsEvents
-  .map(event => Number(event.matchId))
+  .map(event => Number(event.idEvent))
   .filter(id => sportsDbIds.has(id));
 
 console.log("📊 IDs de iSPORTS que coinciden con IDs de TheSportsDB:", isportsMatchedIds.length);
 
 const matchedExamples = filteredIsportsEvents
-  .filter(event => sportsDbIds.has(Number(event.matchId)))
+  .filter(event => sportsDbIds.has(Number(event.idEvent)))
   .slice(0, 20)
   .map(event => ({
-    league: event.leagueName,
-    local: event.homeName,
-    visitante: event.awayName,
-    fecha: event.matchTime
-      ? new Date(Number(event.matchTime) * 1000).toISOString()
-      : null,
-    idEvent: event.matchId
+    league: event.strLeague,
+    local: event.strHomeTeam,
+    visitante: event.strAwayTeam,
+    fecha: event.strTimestamp || null,
+    idEvent: event.idEvent
   }));
 
 console.log("📋 Ejemplos de coincidencias (máx 20):", JSON.stringify(matchedExamples, null, 2));
