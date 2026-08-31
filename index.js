@@ -35,7 +35,6 @@ const path = require("path");
 const sharp = require("sharp");
 const statsRouter = require("./routes/stats");
 const updateTeamStats = require("./services/updateTeamStats");
-const { runLogoSyncTick } = require("./services/logoSync");
 const { getFixtures } = require("./services/apiFootball");
 
 const matchesRouter = require("./routes/matches");
@@ -143,8 +142,5 @@ app.listen(PORT, "0.0.0.0", async () => {
   } catch (error) {
     console.error("❌ ERROR ACTUALIZANDO TEAM_STATS:", error);
   }
-
-  runLogoSyncTick();
-  setInterval(runLogoSyncTick, 31 * 60 * 1000);
 
 });

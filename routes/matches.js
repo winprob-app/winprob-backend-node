@@ -5,6 +5,7 @@ const { supabase } = require("../index");
 const axios = require("axios");
 const { getMatchesByDate } = require("../services/apiFootball");
 const { getDisplayLeagueName } = require("../services/leagueAliases");
+const { cacheTeamLogoFromUrl } = require("../services/logoStorage");
 
 let cachedMatches = [];
 let lastUpdate = 0;
@@ -364,6 +365,39 @@ if (error) {
 }
 
 lastUpdate = now;
+
+const uniqueTeams = Array.from(
+  new Map(
+    cachedMatches
+      .flatMap((match) => [
+        {
+          teamId: match.teams?.home?.id,
+          teamName: match.teams?.home?.name,
+          logoUrl: match.teams?.home?.logo,
+        },
+        {
+          teamId: match.teams?.away?.id,
+          teamName: match.teams?.away?.name,
+          logoUrl: match.teams?.away?.logo,
+        },
+      ])
+      .filter((team) => team.teamId && team.teamName && team.logoUrl)
+      .map((team) => [String(team.teamId), team])
+  ).values()
+);
+
+console.log("🖼️ EQUIPOS ÚNICOS PARA GUARDAR LOGO:", uniqueTeams.length);
+console.log("🖼️ EJEMPLO:", JSON.stringify(uniqueTeams.slice(0, 3), null, 2));
+
+Promise.allSettled(
+  uniqueTeams.map(async (team) => {
+    try {
+      await cacheTeamLogoFromUrl(team.teamId, team.teamName, team.logoUrl);
+    } catch (error) {
+      console.error("❌ Error saving team logo from matches:", error.message);
+    }
+  })
+);
 
 res.json(cachedMatches);
 
