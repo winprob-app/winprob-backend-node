@@ -36,6 +36,7 @@ const sharp = require("sharp");
 const statsRouter = require("./routes/stats");
 const updateTeamStats = require("./services/updateTeamStats");
 const { getFixtures } = require("./services/apiFootball");
+const { getMatchesByDateRange } = require("./services/footballData");
 
 const matchesRouter = require("./routes/matches");
 const logoRouter = require("./routes/logo");
@@ -102,6 +103,16 @@ app.get("/health", (req, res) => {
 app.get("/test-apifootball", async (req, res) => {
   const today = new Date().toISOString().split("T")[0];
   const result = await getFixtures({ date: today });
+
+  return res.json(result);
+});
+
+app.get("/test-footballdata", async (req, res) => {
+  const today = new Date().toISOString().split("T")[0];
+  const future = new Date();
+  future.setDate(future.getDate() + 10);
+  const futureDate = future.toISOString().split("T")[0];
+  const result = await getMatchesByDateRange(today, futureDate);
 
   return res.json(result);
 });

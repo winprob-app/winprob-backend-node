@@ -4,6 +4,7 @@ const { supabase } = require("../index");
 
 const axios = require("axios");
 const { getMatchesByDate } = require("../services/apiFootball");
+const { getMatchesConverted } = require("../services/footballData");
 const { getDisplayLeagueName } = require("../services/leagueAliases");
 const { cacheTeamLogoFromUrl } = require("../services/logoStorage");
 
@@ -91,10 +92,24 @@ const apiFootballRequests = apiFootballDates.map((date) =>
 // EJECUTAR LAS DOS APIS
 // ==========================
 
-const [sportsDbResponses, isportsResponses] =
+// ==========================
+// FOOTBALL-DATA: rango completo en una sola llamada
+// ==========================
+
+const footballDataFrom = formatDate(today);
+const footballDataToDate = new Date(today);
+footballDataToDate.setDate(today.getDate() + 10);
+const footballDataTo = formatDate(footballDataToDate);
+
+// ==========================
+// EJECUTAR LAS TRES APIS
+// ==========================
+
+const [sportsDbResponses, isportsResponses, footballDataEvents] =
   await Promise.all([
     Promise.all(sportsDbRequests),
     Promise.all(apiFootballRequests),
+    getMatchesConverted(footballDataFrom, footballDataTo),
   ]);
 
 console.log(
@@ -197,6 +212,12 @@ console.log(
 
 events.push(...sportsDbEvents);
 events.push(...convertedIsportsEvents);
+events.push(...footballDataEvents);
+
+console.log(
+  "📊 EVENTOS FOOTBALL-DATA:",
+  footballDataEvents.length
+);
 
 console.log(
   "📊 EVENTOS THESPORTSDB:",
