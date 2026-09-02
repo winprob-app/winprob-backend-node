@@ -3,6 +3,10 @@
 const leagueAliases = {
   "argentine division 1": "Primera División Argentina",
   "argentinian primera division": "Primera División Argentina",
+  "la liga": "La Liga",
+  "spanish la liga": "La Liga",
+  "bundesliga": "Bundesliga",
+  "german bundesliga": "Bundesliga",
 };
 
 function normalize(name) {
