@@ -5,6 +5,7 @@ const leagueAliases = {
   "argentinian primera division": "Primera División Argentina",
   "la liga": "La Liga",
   "spanish la liga": "La Liga",
+  "primera division": "La Liga",
   "bundesliga": "Bundesliga",
   "german bundesliga": "Bundesliga",
 };
