@@ -17,6 +17,13 @@ const teamAliases = {
   "real sociedad de fútbol": "Real Sociedad",
   "sevilla fc": "Sevilla",
   "valencia cf": "Valencia",
+  "real madrid cf": "Real Madrid",
+  "club atlético de madrid": "Atletico Madrid",
+  "real racing club de santander": "Racing Santander",
+  "rc deportivo la coruña": "Deportivo La Coruna",
+  "ca osasuna": "Osasuna",
+  "rc celta de vigo": "Celta Vigo",
+  "real valladolid cf": "Real Valladolid",
 
   // Alemania (Bundesliga)
   "bayern munchen": "FC Bayern München",
