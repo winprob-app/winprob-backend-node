@@ -7,6 +7,7 @@ const { getMatchesByDate } = require("../services/apiFootball");
 const { getMatchesConverted } = require("../services/footballData");
 const { getDisplayLeagueName } = require("../services/leagueAliases");
 const { cacheTeamLogoFromUrl } = require("../services/logoStorage");
+const { getDisplayTeamName } = require("../services/teamAliases");
 
 let cachedMatches = [];
 let lastUpdate = 0;
@@ -326,12 +327,12 @@ cachedMatches = events.map(event => ({
   teams: {
   home: {
     id: parseInt(event.idHomeTeam),
-    name: event.strHomeTeam,
+    name: getDisplayTeamName(event.strHomeTeam),
     logo: event.strHomeTeamBadge
   },
   away: {
     id: parseInt(event.idAwayTeam),
-    name: event.strAwayTeam,
+    name: getDisplayTeamName(event.strAwayTeam),
     logo: event.strAwayTeamBadge
   }
 },
