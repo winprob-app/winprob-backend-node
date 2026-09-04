@@ -66,6 +66,17 @@ const FILES = [
   { url: "https://raw.githubusercontent.com/openfootball/south-america/master/colombia/2025_co1.txt", year: 2025, leagueName: "Categoria Primera A" },
   { url: "https://raw.githubusercontent.com/openfootball/south-america/master/brazil/2024_br1.txt", year: 2024, leagueName: "Brazil Serie A" },
   { url: "https://raw.githubusercontent.com/openfootball/south-america/master/brazil/2025_br1.txt", year: 2025, leagueName: "Brazil Serie A" },
+
+  { url: "https://raw.githubusercontent.com/openfootball/england/master/2024-25/1-premierleague.txt", year: 2024, leagueName: "Premier League" },
+  { url: "https://raw.githubusercontent.com/openfootball/england/master/2025-26/1-premierleague.txt", year: 2025, leagueName: "Premier League" },
+  { url: "https://raw.githubusercontent.com/openfootball/england/master/2024-25/2-championship.txt", year: 2024, leagueName: "Championship" },
+  { url: "https://raw.githubusercontent.com/openfootball/england/master/2025-26/2-championship.txt", year: 2025, leagueName: "Championship" },
+
+  { url: "https://raw.githubusercontent.com/openfootball/italy/master/2024-25/1-seriea.txt", year: 2024, leagueName: "Serie A" },
+  { url: "https://raw.githubusercontent.com/openfootball/italy/master/2025-26/1-seriea.txt", year: 2025, leagueName: "Serie A" },
+
+  { url: "https://raw.githubusercontent.com/openfootball/europe/master/france/2024-25_fr1.txt", year: 2024, leagueName: "Ligue 1" },
+  { url: "https://raw.githubusercontent.com/openfootball/europe/master/france/2025-26_fr1.txt", year: 2025, leagueName: "Ligue 1" },
 ];
 
 router.get("/", async (req, res) => {
