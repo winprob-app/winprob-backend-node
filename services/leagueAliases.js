@@ -8,6 +8,8 @@ const leagueAliases = {
   "primera division": "La Liga",
   "bundesliga": "Bundesliga",
   "german bundesliga": "Bundesliga",
+  "england championship": "Championship",
+  "france ligue 1": "Ligue 1",
 };
 
 function normalize(name) {
