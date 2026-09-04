@@ -10,6 +10,8 @@ const MONTHS = {
 
 const DATE_LINE_REGEX = /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})(?:\s+(\d{4}))?$/;
 const MATCH_LINE_REGEX = /^(\d{1,2}:\d{2})?\s*(.+?)\s+v\s+(.+?)\s+(\d+)-(\d+)(?:\s*\([^)]*\))?$/;
+const NEW_FORMAT_TIME_REGEX = /^\d{1,2}:\d{2}$/;
+const NEW_FORMAT_SCORE_REGEX = /^(\d+)-(\d+)/;
 
 function parseFootballTxt(text, defaultYear) {
   const lines = text.split("\n");
@@ -20,7 +22,13 @@ function parseFootballTxt(text, defaultYear) {
   for (const rawLine of lines) {
     const line = rawLine.trim();
 
-    if (!line || line.startsWith("=") || line.startsWith("#") || line.startsWith("▪")) {
+    if (
+      !line ||
+      line.startsWith("=") ||
+      line.startsWith("#") ||
+      line.startsWith("▪") ||
+      line.startsWith("(")
+    ) {
       continue;
     }
 
@@ -33,8 +41,32 @@ function parseFootballTxt(text, defaultYear) {
       continue;
     }
 
+    if (!currentDate) continue;
+
+    // Formato nuevo: "18:30   Equipo1  2-0 (1-0)  Equipo2"
+    const tokens = line.split(/\s{2,}/).map((t) => t.trim()).filter(Boolean);
+    if (
+      tokens.length >= 4 &&
+      NEW_FORMAT_TIME_REGEX.test(tokens[0]) &&
+      NEW_FORMAT_SCORE_REGEX.test(tokens[2])
+    ) {
+      const scoreMatch = tokens[2].match(NEW_FORMAT_SCORE_REGEX);
+      lastTime = tokens[0];
+
+      matches.push({
+        date: currentDate,
+        time: tokens[0],
+        team1: tokens[1],
+        team2: tokens[3],
+        homeScore: parseInt(scoreMatch[1]),
+        awayScore: parseInt(scoreMatch[2]),
+      });
+      continue;
+    }
+
+    // Formato viejo: "18:30  Equipo1 v Equipo2  2-0 (1-0)"
     const matchLine = line.match(MATCH_LINE_REGEX);
-    if (matchLine && currentDate) {
+    if (matchLine) {
       const [, time, team1, team2, homeScore, awayScore] = matchLine;
       if (time) lastTime = time;
 
