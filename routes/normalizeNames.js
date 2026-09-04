@@ -8,11 +8,26 @@ router.get("/", async (req, res) => {
   try {
     let camposActualizados = 0;
 
-    const { data, error } = await supabase
-      .from("matches")
-      .select("home_team_name, away_team_name, league_name");
+   let data = [];
+   let desde = 0;
+   const tamañoPagina = 1000;
 
-    if (error) throw error;
+while (true) {
+  const { data: pagina, error } = await supabase
+    .from("matches")
+    .select("home_team_name, away_team_name, league_name")
+    .range(desde, desde + tamañoPagina - 1);
+
+  if (error) throw error;
+  if (!pagina || pagina.length === 0) break;
+
+  data = data.concat(pagina);
+  desde += tamañoPagina;
+
+  if (pagina.length < tamañoPagina) break;
+}
+
+console.log(`📦 Total de partidos leídos para normalizar: ${data.length}`);
 
     const nombresHome = [...new Set(data.map((m) => m.home_team_name).filter(Boolean))];
     const nombresAway = [...new Set(data.map((m) => m.away_team_name).filter(Boolean))];
