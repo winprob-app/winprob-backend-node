@@ -110,6 +110,11 @@ const FILES = [
   { url: "https://raw.githubusercontent.com/openfootball/europe/master/france/2024-25_fr1.txt", year: 2024, leagueName: "Ligue 1" },
   { url: "https://raw.githubusercontent.com/openfootball/europe/master/france/2025-26_fr1.txt", year: 2025, leagueName: "Ligue 1" },
 
+  { url: "https://raw.githubusercontent.com/openfootball/europe/master/netherlands/2024-25_nl1.txt", year: 2024, leagueName: "Eredivisie" },
+  { url: "https://raw.githubusercontent.com/openfootball/europe/master/netherlands/2025-26_nl1.txt", year: 2025, leagueName: "Eredivisie" },
+
+  { url: "https://raw.githubusercontent.com/openfootball/europe/master/portugal/2024-25_pt1.txt", year: 2024, leagueName: "Primeira Liga" },
+  { url: "https://raw.githubusercontent.com/openfootball/europe/master/portugal/2025-26_pt1.txt", year: 2025, leagueName: "Primeira Liga" },
 ];
 
 
