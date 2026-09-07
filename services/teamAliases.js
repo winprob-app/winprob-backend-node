@@ -148,6 +148,23 @@ const teamAliases = {
 "us sassuolo calcio": "Sassuolo",
 "venezia fc": "Venezia",
 
+ // Países Bajos - Eredivisie
+ "az alkmaar": "AZ",
+ "groningen": "FC Groningen",
+ "go ahead eagles": "Go Ahead Eagles",
+ "nec nijmegen": "NEC",
+ "excelsior": "SBV Excelsior",
+
+ // Portugal - Primeira Liga
+ "santa clara": "CD Santa Clara",
+ "alverca": "FC Alverca",
+ "arouca": "FC Arouca",
+ "rio ave": "Rio Ave FC",
+ "sporting cp": "Sporting Clube de Portugal",
+ "vitória sc": "Vitória Guimarães",
+ "academico viseu": "Académico de Viseu FC",
+ "maritimo": "CS Marítimo",
+
 };
 
 function normalize(name) {
