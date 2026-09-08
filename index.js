@@ -46,6 +46,7 @@ const importHistoryRouter = require("./routes/importHistory");
 const importHistorySouthAmericaRouter = require("./routes/importHistorySouthAmerica");
 const syncLogosRouter = require("./routes/syncLogos");
 const normalizeNamesRouter = require("./routes/normalizeNames");
+const visitsRouter = require("./routes/visits");
 
 const app = express();
 
@@ -65,6 +66,7 @@ app.use("/import-history", importHistoryRouter);
 app.use("/import-history-sa", importHistorySouthAmericaRouter);
 app.use("/sync-logos", syncLogosRouter);
 app.use("/normalize-names", normalizeNamesRouter);
+app.use("/visits", visitsRouter);
 
 // ==========================
 // VARIABLES
