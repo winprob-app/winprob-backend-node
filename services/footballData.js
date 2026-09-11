@@ -88,10 +88,9 @@ async function getMatchesConverted(dateFrom, dateTo) {
 
   } catch (error) {
     console.error(
-      "❌ ERROR CONVIRTIENDO MATCHES FOOTBALL-DATA:",
-      error.message
+      "❌ ERROR CONSULTANDO COMPETITION MATCHES FOOTBALL-DATA:",
+      error.response?.data || error.message
     );
-
     return [];
   }
 }
