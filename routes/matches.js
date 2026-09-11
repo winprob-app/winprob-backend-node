@@ -3,7 +3,6 @@ const router = express.Router();
 const { supabase } = require("../index");
 
 const axios = require("axios");
-const { getMatchesByDate } = require("../services/apiFootball");
 const { getMatchesConverted } = require("../services/footballData");
 const { getDisplayLeagueName } = require("../services/leagueAliases");
 const { cacheTeamLogoFromUrl } = require("../services/logoStorage");
@@ -30,8 +29,7 @@ router.get("/", async (req, res) => {
     }
 
     
-console.log("🌍 CONSULTANDO THESPORTSDB + iSPORTS");
-console.log("📡 CONSULTANDO ISPORTS SIMULTÁNEAMENTE");
+console.log("🌍 CONSULTANDO THESPORTSDB");
 
 
 // ==========================
@@ -59,19 +57,6 @@ for (let i = -7; i <= 7; i++) {
 }
 
 // ==========================
-// iSPORTS: solo hoy + mañana + pasado mañana
-// ==========================
-
-const apiFootballDates = [];
-
-for (let i = 0; i <= 2; i++) {
-  const date = new Date(today);
-  date.setDate(today.getDate() + i);
-
-  apiFootballDates.push(formatDate(date));
-}
-
-// ==========================
 // THESPORTSDB
 // ==========================
 
@@ -80,18 +65,6 @@ const sportsDbRequests = sportsDbDates.map((date) =>
     `https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${date}&s=Soccer`
   )
 );
-
-// ==========================
-// iSPORTS
-// ==========================
-
-const apiFootballRequests = apiFootballDates.map((date) =>
-  getMatchesByDate(date)
-);
-
-// ==========================
-// EJECUTAR LAS DOS APIS
-// ==========================
 
 // ==========================
 // FOOTBALL-DATA: rango completo en una sola llamada
@@ -103,25 +76,18 @@ footballDataToDate.setDate(today.getDate() + 10);
 const footballDataTo = formatDate(footballDataToDate);
 
 // ==========================
-// EJECUTAR LAS TRES APIS
+// EJECUTAR LAS DOS APIS
 // ==========================
 
-const [sportsDbResponses, isportsResponses, footballDataEvents] =
+const [sportsDbResponses, footballDataEvents] =
   await Promise.all([
     Promise.all(sportsDbRequests),
-    Promise.all(apiFootballRequests),
     getMatchesConverted(footballDataFrom, footballDataTo),
   ]);
 
 console.log(
   "📊 TheSportsDB:",
   sportsDbResponses.length,
-  "consultas"
-);
-
-console.log(
-  "📊 iSports:",
-  isportsResponses.length,
   "consultas"
 );
 
@@ -137,28 +103,13 @@ for (const response of sportsDbResponses) {
   );
 }
 
-// ==========================
-// PARTIDOS iSPORTS
-// ==========================
-
-let isportsEvents = [];
-
-for (const data of isportsResponses) {
-  isportsEvents.push(...data);
-}
-
 console.log(
   "📊 PARTIDOS THESPORTSDB:",
   sportsDbEvents.length
 );
 
-console.log(
-  "📊 PARTIDOS iSPORTS:",
-  isportsEvents.length
-);
-
 // ==========================
-// UNIR PARTIDOS DE LAS DOS APIS
+// UNIR PARTIDOS DE LAS APIS
 // ==========================
 
 let events = [];
@@ -168,51 +119,11 @@ console.log(
   events.length
 );
 
-console.log(
-  "📊 EVENTOS iSPORTS PENDIENTES DE CONVERTIR:",
-  isportsEvents.length
-);
-
-
-const filteredIsportsEvents = isportsEvents;
-
-console.log(
-  "📊 iSPORTS ANTES DEL FILTRO:",
-  isportsEvents.length
-);
-
-console.log(
-  "📊 iSPORTS DESPUÉS DEL FILTRO:",
-  filteredIsportsEvents.length
-);
-
-console.log(
-  "📋 DETALLE FILTRADO iSPORTS:",
-  filteredIsportsEvents.slice(0, 156).map(event => ({
-    leagueName: event?.strLeague,
-    homeName: event?.strHomeTeam,
-    awayName: event?.strAwayTeam,
-    date: event?.strTimestamp || null
-  }))
-);
-
-// ==========================
-// API-FOOTBALL YA VIENE CONVERTIDO
-// ==========================
-
-const convertedIsportsEvents = filteredIsportsEvents;
-
-console.log(
-  "📊 iSPORTS CONVERTIDOS:",
-  convertedIsportsEvents.length
-);
-
 // ==========================
 // UNIR PARTIDOS
 // ==========================
 
 events.push(...sportsDbEvents);
-events.push(...convertedIsportsEvents);
 events.push(...footballDataEvents);
 
 console.log(
@@ -223,11 +134,6 @@ console.log(
 console.log(
   "📊 EVENTOS THESPORTSDB:",
   sportsDbEvents.length
-);
-
-console.log(
-  "📊 EVENTOS iSPORTS:",
-  convertedIsportsEvents.length
 );
 
 console.log(
@@ -256,9 +162,8 @@ events.sort((a, b) =>
 
 console.log("PARTIDOS ENCONTRADOS:", events.length);
 
-console.log("=== DIAGNÓSTICO DUPLICADOS iSPORTS vs THESPORTSDB ===");
+console.log("=== DIAGNÓSTICO DUPLICADOS ===");
 console.log("📊 TheSportsDB antes de combinar:", sportsDbEvents.length);
-console.log("📊 iSPORTS después del filtro:", filteredIsportsEvents.length);
 console.log("📊 Total antes de eliminar duplicados:", events.length);
 
 const uniqueEvents = [
@@ -268,29 +173,6 @@ const uniqueEvents = [
 ];
 
 console.log("📊 Total después de eliminar duplicados:", uniqueEvents.length);
-
-const sportsDbIds = new Set(
-  sportsDbEvents.map(event => Number(event.idEvent))
-);
-
-const isportsMatchedIds = filteredIsportsEvents
-  .map(event => Number(event.idEvent))
-  .filter(id => sportsDbIds.has(id));
-
-console.log("📊 IDs de iSPORTS que coinciden con IDs de TheSportsDB:", isportsMatchedIds.length);
-
-const matchedExamples = filteredIsportsEvents
-  .filter(event => sportsDbIds.has(Number(event.idEvent)))
-  .slice(0, 20)
-  .map(event => ({
-    league: event.strLeague,
-    local: event.strHomeTeam,
-    visitante: event.strAwayTeam,
-    fecha: event.strTimestamp || null,
-    idEvent: event.idEvent
-  }));
-
-console.log("📋 Ejemplos de coincidencias (máx 20):", JSON.stringify(matchedExamples, null, 2));
 
 console.log("=== FIN DIAGNÓSTICO DUPLICADOS ===");
 

@@ -35,7 +35,6 @@ const path = require("path");
 const sharp = require("sharp");
 const statsRouter = require("./routes/stats");
 const updateTeamStats = require("./services/updateTeamStats");
-const { getFixtures } = require("./services/apiFootball");
 const { getMatchesByDateRange } = require("./services/footballData");
 
 const matchesRouter = require("./routes/matches");
@@ -45,7 +44,6 @@ const headToHeadRouter = require("./routes/headToHead");
 const importHistoryRouter = require("./routes/importHistory");
 const importHistorySouthAmericaRouter = require("./routes/importHistorySouthAmerica");
 const importChampionsLeague = require("./routes/importChampionsLeague");
-const syncLogosRouter = require("./routes/syncLogos");
 const normalizeNamesRouter = require("./routes/normalizeNames");
 const visitsRouter = require("./routes/visits");
 
@@ -66,7 +64,6 @@ app.use("/head-to-head", headToHeadRouter);
 app.use("/import-history", importHistoryRouter);
 app.use("/import-history-sa", importHistorySouthAmericaRouter);
 app.use("/import-champions-league", importChampionsLeague);
-app.use("/sync-logos", syncLogosRouter);
 app.use("/normalize-names", normalizeNamesRouter);
 app.use("/visits", visitsRouter);
 
@@ -104,13 +101,6 @@ app.get("/health", (req, res) => {
 
   });
 
-});
-
-app.get("/test-apifootball", async (req, res) => {
-  const today = new Date().toISOString().split("T")[0];
-  const result = await getFixtures({ date: today });
-
-  return res.json(result);
 });
 
 app.get("/test-footballdata", async (req, res) => {
