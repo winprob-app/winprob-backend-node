@@ -6,8 +6,8 @@ const axios = require("axios");
 const { getMatchesConverted } = require("../services/footballData");
 const { getDisplayLeagueName } = require("../services/leagueAliases");
 const { getDisplayTeamName } = require("../services/teamAliases");
-const { cacheTeamLogoFromUrl, getTeamLogosFromCacheBatch } = require("../services/logoStorage");
 const { normalizeLogoName } = require("../services/logoCatalog");
+const { cacheTeamLogoFromUrl, getTeamLogosFromCacheBatch, cacheTeamLogosBatch } = require("../services/logoStorage");
 
 let cachedMatches = [];
 let lastUpdate = 0;
@@ -311,15 +311,7 @@ const uniqueTeams = Array.from(
 console.log("🖼️ EQUIPOS ÚNICOS PARA GUARDAR LOGO:", uniqueTeams.length);
 console.log("🖼️ EJEMPLO:", JSON.stringify(uniqueTeams.slice(0, 3), null, 2));
 
-Promise.allSettled(
-  uniqueTeams.map(async (team) => {
-    try {
-      await cacheTeamLogoFromUrl(team.teamId, team.teamName, team.logoUrl);
-    } catch (error) {
-      console.error("❌ Error saving team logo from matches:", error.message);
-    }
-  })
-);
+cacheTeamLogosBatch(uniqueTeams, 10);
 
 res.json(cachedMatches);
 

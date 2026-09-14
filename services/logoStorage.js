@@ -153,9 +153,30 @@ async function getTeamLogosFromCacheBatch(teamNames) {
   return map;
 }
 
+/**
+ * Cachea logos de varios equipos en lotes pequeños (no todos a la vez),
+ * para evitar que el proveedor corte la conexión por exceso de peticiones simultáneas.
+ */
+async function cacheTeamLogosBatch(teams, concurrency = 10) {
+  for (let i = 0; i < teams.length; i += concurrency) {
+    const chunk = teams.slice(i, i + concurrency);
+
+    await Promise.allSettled(
+      chunk.map(async (team) => {
+        try {
+          await cacheTeamLogoFromUrl(team.teamId, team.teamName, team.logoUrl);
+        } catch (error) {
+          console.error("❌ Error guardando logo del equipo:", error.message);
+        }
+      })
+    );
+  }
+}
+
 module.exports = {
   getTeamLogoFromCache,
   getTeamLogosFromCacheBatch,
+  cacheTeamLogosBatch,
   cacheTeamLogoFromUrl,
   sleep,
 };
