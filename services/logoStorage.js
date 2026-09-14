@@ -120,8 +120,42 @@ async function cacheTeamLogoFromUrl(teamId, teamName, sourceLogoUrl) {
   return publicLogoUrl;
 }
 
+/**
+ * Busca en LOTE (una sola consulta) el logo cacheado de varios equipos.
+ * Devuelve un objeto { normalized_name: logo_url }.
+ */
+async function getTeamLogosFromCacheBatch(teamNames) {
+  const normalizedNames = [
+    ...new Set(
+      teamNames.map(normalizeLogoName).filter(Boolean)
+    ),
+  ];
+
+  if (normalizedNames.length === 0) {
+    return {};
+  }
+
+  const { data, error } = await supabase
+    .from("team_logos")
+    .select("normalized_name, logo_url")
+    .in("normalized_name", normalizedNames);
+
+  if (error) {
+    console.error("❌ ERROR LEYENDO CACHÉ DE LOGOS (batch):", error.message);
+    return {};
+  }
+
+  const map = {};
+  (data || []).forEach((row) => {
+    map[row.normalized_name] = row.logo_url;
+  });
+
+  return map;
+}
+
 module.exports = {
   getTeamLogoFromCache,
+  getTeamLogosFromCacheBatch,
   cacheTeamLogoFromUrl,
   sleep,
 };

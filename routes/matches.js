@@ -5,8 +5,9 @@ const { supabase } = require("../index");
 const axios = require("axios");
 const { getMatchesConverted } = require("../services/footballData");
 const { getDisplayLeagueName } = require("../services/leagueAliases");
-const { cacheTeamLogoFromUrl } = require("../services/logoStorage");
 const { getDisplayTeamName } = require("../services/teamAliases");
+const { cacheTeamLogoFromUrl, getTeamLogosFromCacheBatch } = require("../services/logoStorage");
+const { normalizeLogoName } = require("../services/logoCatalog");
 
 let cachedMatches = [];
 let lastUpdate = 0;
@@ -190,6 +191,19 @@ events.forEach(event => {
 
 });
 
+// ==========================
+// LOGOS CACHEADOS (Supabase Storage)
+// ==========================
+
+const allTeamNames = events.flatMap((event) => [
+  getDisplayTeamName(event.strHomeTeam),
+  getDisplayTeamName(event.strAwayTeam),
+]);
+
+const cachedLogosMap = await getTeamLogosFromCacheBatch(allTeamNames);
+
+console.log("🖼️ LOGOS ENCONTRADOS EN CACHÉ:", Object.keys(cachedLogosMap).length);
+
 cachedMatches = events.map(event => ({
 
   fixture: {
@@ -210,12 +224,16 @@ cachedMatches = events.map(event => ({
   home: {
     id: parseInt(event.idHomeTeam),
     name: getDisplayTeamName(event.strHomeTeam),
-    logo: event.strHomeTeamBadge
+    logo:
+      cachedLogosMap[normalizeLogoName(getDisplayTeamName(event.strHomeTeam))] ||
+      event.strHomeTeamBadge
   },
   away: {
     id: parseInt(event.idAwayTeam),
     name: getDisplayTeamName(event.strAwayTeam),
-    logo: event.strAwayTeamBadge
+    logo:
+      cachedLogosMap[normalizeLogoName(getDisplayTeamName(event.strAwayTeam))] ||
+      event.strAwayTeamBadge
   }
 },
 
