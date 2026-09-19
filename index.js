@@ -34,6 +34,7 @@ const fs = require("fs-extra");
 const path = require("path");
 const sharp = require("sharp");
 const statsRouter = require("./routes/stats");
+const teamStatsRouter = require("./routes/teamStats");
 const updateTeamStats = require("./services/updateTeamStats");
 const { getMatchesByDateRange } = require("./services/footballData");
 
@@ -58,6 +59,7 @@ app.use(express.json());
 
 app.use("/matches", matchesRouter);
 app.use("/stats", statsRouter);
+app.use("/team-stats", teamStatsRouter);
 app.use("/logo", logoRouter);
 app.use("/team-matches", teamMatchesRouter);
 app.use("/head-to-head", headToHeadRouter);
