@@ -23,6 +23,7 @@ async function updateTeamStats() {
       .from("matches")
       .select("*")
       .eq("status", "FT")
+      .order("fixture_date")
       .order("id")
       .range(desde, desde + tamañoPagina - 1);
 
@@ -76,7 +77,8 @@ async function updateTeamStats() {
         draws: 0,
         losses: 0,
         goals_for: 0,
-        goals_against: 0
+        goals_against: 0,
+        history: []
       };
     }
 
@@ -90,7 +92,8 @@ async function updateTeamStats() {
         draws: 0,
         losses: 0,
         goals_for: 0,
-        goals_against: 0
+        goals_against: 0,
+        history: []
       };
     }
 
@@ -101,51 +104,59 @@ async function updateTeamStats() {
       stats[awayName].team_id = awayId;
     }
 
-    // Partidos jugados
-    stats[homeName].matches++;
-    stats[awayName].matches++;
+    stats[homeName].history.push({
+      goals_for: homeGoals,
+      goals_against: awayGoals,
+    });
+    stats[awayName].history.push({
+      goals_for: awayGoals,
+      goals_against: homeGoals,
+    });
 
-    // Goles
-    stats[homeName].goals_for += homeGoals;
-    stats[homeName].goals_against += awayGoals;
-
-    stats[awayName].goals_for += awayGoals;
-    stats[awayName].goals_against += homeGoals;
-
-    // Resultado
-    if (homeGoals > awayGoals) {
-      stats[homeName].wins++;
-      stats[awayName].losses++;
-    } else if (homeGoals < awayGoals) {
-      stats[awayName].wins++;
-      stats[homeName].losses++;
-    } else {
-      stats[homeName].draws++;
-      stats[awayName].draws++;
-    }
+    if (stats[homeName].history.length > 20) stats[homeName].history.shift();
+    if (stats[awayName].history.length > 20) stats[awayName].history.shift();
   }
 
   // Preparar datos para team_stats
   const teamStats = Object.values(stats).map((team) => {
+    const recentMatches = team.history;
+    const matches = recentMatches.length;
+    const goalsFor = recentMatches.reduce(
+      (total, match) => total + match.goals_for,
+      0
+    );
+    const goalsAgainst = recentMatches.reduce(
+      (total, match) => total + match.goals_against,
+      0
+    );
+    const wins = recentMatches.filter(
+      (match) => match.goals_for > match.goals_against
+    ).length;
+    const draws = recentMatches.filter(
+      (match) => match.goals_for === match.goals_against
+    ).length;
+    const losses = recentMatches.filter(
+      (match) => match.goals_for < match.goals_against
+    ).length;
     const avgGoalsFor =
-      team.matches > 0
-        ? team.goals_for / team.matches
+      matches > 0
+        ? goalsFor / matches
         : 0;
 
     const avgGoalsAgainst =
-      team.matches > 0
-        ? team.goals_against / team.matches
+      matches > 0
+        ? goalsAgainst / matches
         : 0;
 
     return {
       team_id: team.team_id,
       team_name: team.team_name,
-      matches: team.matches,
-      wins: team.wins,
-      draws: team.draws,
-      losses: team.losses,
-      goals_for: team.goals_for,
-      goals_against: team.goals_against,
+      matches,
+      wins,
+      draws,
+      losses,
+      goals_for: goalsFor,
+      goals_against: goalsAgainst,
       avg_goals_for: Number(avgGoalsFor.toFixed(2)),
       avg_goals_against: Number(avgGoalsAgainst.toFixed(2)),
       updated_at: new Date().toISOString()
